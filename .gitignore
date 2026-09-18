@@ -1,0 +1,8 @@
+# never publish the answer keys
+notebooks/*_solutions.ipynb
+old_notebooks/
+.DS_Store
+.ipynb_checkpoints/
+notes/*.aux
+notes/*.log
+notes/*.out
