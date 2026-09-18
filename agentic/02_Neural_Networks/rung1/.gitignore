@@ -1,0 +1,13 @@
+# Local to rung1, so the course repo's root .gitignore stays as upstream has it.
+
+# Python bytecode cache
+__pycache__/
+*.pyc
+
+# TNG download cache. Grows to ~1.3 GB for the group-catalogue fields alone,
+# plus one HDF5 file per galaxy cutout -- never commit this.
+data/
+
+# Derived measurement arrays. Regenerate with the drivers; the figures in
+# results/checks/ ARE tracked on purpose, as the verification record.
+results/*.npz
