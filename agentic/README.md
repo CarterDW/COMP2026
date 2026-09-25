@@ -39,3 +39,14 @@ This is a free tool for students, and it is excellent for code completion. It is
 - Know how to turn Copilot on and off with the icon in the bottom corner. For instance: when you need to write a line based on your thinking, its good to have it off, but when you need help with a CS detail such as an indexing convention or string formatting, it is good to have it on.
 - I find in-line Copilot most useful, but there is also a sidebar where you can have chats with Copilot.
 - Copilot can debug: highlight the code, right click, and select "Ask Copilot" for a chat window where you can ask what is working and what isn't. A great way to learn about code you don't understand.
+
+### Lessons from Experience
+
+I will categorize noteworthy lessons that generalize across sessions as they appear in class. 
+
+Week 2: Neural Networks
+
+1. *Data Dependency.* A student started an agentic project the correlation between doping and anisotropy, but so far did not have access to the data. **Solution:** determine if synthetic data generate by algorithm can be useful to set up the rest of the code, slotting in the real data when access is granted.
+2. *Literature Review.* A student had three papers on which they were building their agentic session. Reading all three would take 100 minutes. **Solution:** instead asked ``fan out three sub-agents to review the papers, then summarize the ideas and techniques`` got the gist within a few minutes and accelerated the start of the problem.
+3. *Taking a Backseat.*  A student was studying sports betting on MLB data to predict winners and losers. Claude pulled tons of data and wrote a many-file NN library that trained an improved policy (~ 55%) by a few percent on the "home team always wins" policy (~ 53%). But it was way too much information, and wasn't quite what the author intended. **Solution:** more precise prompts, breaking problems into steps, asking Claude to stop for verification at each step.
+4. *Visualization.* A student using a Physics Informed Neural Network (PINN) as a variatonal ansatz for the simple harmonic oscillator quantum ground-state. A plot clearly demonstrated convergence by showing how the curve evolves over many training steps.

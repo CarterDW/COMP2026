@@ -62,25 +62,25 @@ Details may change, but the current plan for topics are:
 **Part 2: Computational Physics**
 - (T) 9/29: Mechanics and Electrostatics (Manual)
 - (F) 10/2: Mechanics and Electrostatics (Agentic)
-- (T) 10/6: Quantum Mechanics (Manual)
+- (T) 10/6: Quantum Mechanics (Manual, submit)
 - (F) 10/9: Quantum Mechanics (Agentic)
 - (T) 10/13: Statistics and Monte Carlo (Manual)
 - (F) 10/16: Statistics and Monte Carlo (Agentic)
-- (T) 10/20: Statistical Mechanics and the Ising Model (Manual)
+- (T) 10/20: Statistical Mechanics and the Ising Model (Manual, submit)
 - (F) 10/23: Statistical Mechanics and the Ising Model (Agentic)
 - (T) 10/27: Optimization and the Cosmological Constant (Manual)
 - (F) 10/30: Optimization and the Cosmological Constant (Agentic)
 
 **Part 3: Machine Learning and Physics**
-- (T) 11/3: Supervised Learning (Manual)
+- (T) 11/3: Supervised Learning (Manual, submit)
 - (F) 11/6: Supervised Learning (Agentic)
 - (T) 11/10: Convolutions and Galaxy Classification (Manual)
 - (F) 11/13: Convolutions and Galaxy Classification (Agentic)
-- (T) 11/17: Finding Structure in Data (Manual)
+- (T) 11/17: Finding Structure in Data (Manual, submit)
 - (F) 11/20: Finding Structure in Data (Agentic)
 - (T) 11/24: Reinforcement Learning (Agentic)
 - (F) 11/27: **No class** (Thanksgiving / Black Friday)
-- (T) 12/1: Generative Models (Manual)
+- (T) 12/1: Generative Models (Manual, submit)
 - (F) 12/4: Generative Models (Agentic)
 - (T) 12/8: **Presentations** — ten minutes each on one portfolio project
 
