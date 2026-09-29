@@ -50,3 +50,7 @@ Week 2: Neural Networks
 2. *Literature Review.* A student had three papers on which they were building their agentic session. Reading all three would take 100 minutes. **Solution:** instead asked ``fan out three sub-agents to review the papers, then summarize the ideas and techniques`` got the gist within a few minutes and accelerated the start of the problem.
 3. *Taking a Backseat.*  A student was studying sports betting on MLB data to predict winners and losers. Claude pulled tons of data and wrote a many-file NN library that trained an improved policy (~ 55%) by a few percent on the "home team always wins" policy (~ 53%). But it was way too much information, and wasn't quite what the author intended. **Solution:** more precise prompts, breaking problems into steps, asking Claude to stop for verification at each step.
 4. *Visualization.* A student using a Physics Informed Neural Network (PINN) as a variatonal ansatz for the simple harmonic oscillator quantum ground-state. A plot clearly demonstrated convergence by showing how the curve evolves over many training steps.
+
+Week 2: Numerical Differentiation and Integration
+
+1. *Snippets.* Related to the idea of taking a backseat. To avoid it, one should work in snippets, where it is better to have it write a little bit of code then understand / test it rather than getting 3000 lines of AI generated output that is impossible to comprehend in a reasonable amount of time.
