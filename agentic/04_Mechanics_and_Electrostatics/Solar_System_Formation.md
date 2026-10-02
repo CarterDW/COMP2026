@@ -120,6 +120,14 @@ contraction, deuterium, hydrogen) and blackbody color from Teff.
 - **Check:** The polytrope temperatures and the analytic Hayashi solution R(t) = (R0^-3 + 3 A t)^(-1/3).
 - **Check:** Contraction from 3.1 to 1.4 Rsun takes ~4.6 Myr, and T_c = 1e7 K occurs near 1 Rsun
   at ~25 Myr, matching the BHAC15 1 Msun track (Baraffe et al. 2015).
+- **Found:**
+  - The one-zone 1 Msun star matches BHAC15 to 5-30%: 2.45e6 K at 3.1 Rsun, 4.8 Myr to reach
+    1.4 Rsun, and the main sequence at 34 Myr with 0.76 Rsun. An n = 1.5 star is slightly too compact.
+  - Driven by the Rung 4 accretion history plus a fitted tail (tau = 12 kyr), our star ends at
+    0.82 Msun. It hits the deuterium thermostat at 20 kyr and reaches the main sequence at 58 Myr
+    (0.62 Rsun, 0.30 Lsun, 5430 K).
+  - During accretion, the split of the surface light into contraction and deuterium is
+    bookkeeping only; after accretion ends it is exact.
 
 ### Rung 5: Disk -> Planetary Embryos, with Mergers
 Seed planetesimals and embryos from Sigma(r). Compare against the minimum-mass solar

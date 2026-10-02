@@ -20,3 +20,9 @@ PC = 648000 / np.pi          # 1 parsec in AU
 M_EARTH = 5.9722e24 / MSUN_KG
 M_JUPITER = 1.89813e27 / MSUN_KG
 R_EARTH = 6.3710e6 / AU_M
+
+# Stellar constants, converted to code units (AU, Msun, yr): energy Msun AU^2 / yr^2, power per yr.
+R_SUN = 6.957e8 / AU_M                                        # AU
+L_SUN = 3.828e26 / (MSUN_KG * AU_M**2 / YEAR_S**3)            # Msun AU^2 / yr^3
+SIGMA_SB = 5.670374e-8 / (MSUN_KG / YEAR_S**3)                # Stefan-Boltzmann, per K^4
+K_OVER_MH = 1.380649e-23 / 1.6735575e-27 * (YEAR_S / AU_M)**2  # k_B / m_H in AU^2 / yr^2 / K
