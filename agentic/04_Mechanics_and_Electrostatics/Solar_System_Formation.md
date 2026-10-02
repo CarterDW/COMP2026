@@ -63,11 +63,20 @@ Direct-sum softened gravity and a kick-drift-kick (symplectic) integrator.
 ### Rung 2: Pressureless Collapse
 A cold, uniform sphere of N particles with no gas.
 - **Check:** Collapse occurs at t_ff = sqrt(3 pi / (32 G rho)).
-- **Check:** With eps -> 0, energy conservation fails at the bounce. This shows why
-  particles need a size.
+- **Check:** Without softening, energy conservation fails and a smaller dt does not fix it,
+  because random sampling always makes a few very close pairs. With softening, the error
+  falls as dt^2. This shows why particles need a size.
+- **Check:** The ejected mass matches the published fit f = 0.048 + 0.022 ln N (Joyce, Marcos &
+  Sylos Labini 2009). The bound remainder settles to 2K/|W| = 1.
+- **Check:** Ejection nearly vanishes for a warm start (Q0 = 0.5) or a centrally concentrated
+  cloud (rho ~ r^-2), as reported by Sylos Labini (2012, 2013).
+- **Found:** How small the cloud gets is set by N (roughly N^(-1/3)), not by eps. A real cloud
+  stays bound because gas dissipates energy, not because of pressure alone. See
+  `solar_system/rung2_cold_collapse/literature_review.md`.
 
 ### Rung 3: Gas via SPH
-Kernel density estimate, isothermal equation of state, and pressure force.
+Kernel density estimate, isothermal equation of state, pressure force, and artificial viscosity
+(the dissipation that stops a gas cloud bouncing like collisionless particles).
 - **Check:** The density of a uniform particle lattice is recovered.
 - **Check (Jeans test):** A cloud above the Jeans mass collapses, and one below it does not.
 
@@ -75,7 +84,21 @@ Kernel density estimate, isothermal equation of state, and pressure force.
 Add sink particles: gas above a density threshold becomes a single accreting star.
 - **Check:** Total angular momentum is conserved, including the sinks.
 - **Check:** The disk radius is close to the centrifugal radius r_c = j^2 / (G M).
-- **Handoff:** the disk surface density Sigma(r) and the stellar mass.
+- **Check:** At least 95% of the mass ends up bound, unlike the ~20% loss in Rung 2.
+- **Handoff:** the disk surface density Sigma(r), the stellar mass, and the sink's accretion history.
+
+### Rung 4b: Protostar Sub-Grid Model -> Stellar Ignition
+The protostar is ~1e3 times smaller than our resolution, so attach a one-zone stellar model to
+the sink, driven by the sink's own accretion history. The model has three parts:
+- polytrope central temperature, T_c ~ 7.6e6 K (M/Msun)(Rsun/R);
+- Kelvin-Helmholtz contraction on the Hayashi track, then the Henyey track;
+- deuterium burning at ~1.5e6 K, and hydrogen ignition at ~1e7 K.
+
+Output: a "stellar ignition" GIF on a log-time axis, showing luminosity components (accretion,
+contraction, deuterium, hydrogen) and blackbody color from Teff.
+- **Check:** The polytrope temperatures and the analytic Hayashi solution R(t) = (R0^-3 + 3 A t)^(-1/3).
+- **Check:** Contraction from 3.1 to 1.4 Rsun takes ~4.6 Myr, and T_c = 1e7 K occurs near 1 Rsun
+  at ~25 Myr, matching the BHAC15 1 Msun track (Baraffe et al. 2015).
 
 ### Rung 5: Disk -> Planetary Embryos, with Mergers
 Seed planetesimals and embryos from Sigma(r). Compare against the minimum-mass solar

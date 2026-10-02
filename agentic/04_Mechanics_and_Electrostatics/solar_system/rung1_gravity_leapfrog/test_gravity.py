@@ -1,5 +1,8 @@
 """Rung 1: the softened force law is right before anything is integrated."""
+import os
+import time
 import numpy as np
+import pytest
 from nbody.gravity import accelerations, potential_energy
 from nbody.units import G
 
@@ -53,3 +56,36 @@ def test_force_is_minus_gradient_of_potential():
             step[i, k] = h
             grad[i, k] = (potential_energy(pos + step, mass, eps) - potential_energy(pos - step, mass, eps)) / (2 * h)
     assert np.allclose(force, -grad, rtol=1e-6, atol=1e-8 * np.abs(force).max())
+
+
+@pytest.mark.parametrize("n", [50, 600])   # below and above PARALLEL_ABOVE_N: serial and parallel builds
+def test_numba_matches_numpy_reference(n):
+    from nbody.gravity import accelerations_numpy, potential_energy_numpy
+    pos, mass, eps = rng.normal(size=(n, 3)), rng.uniform(0.1, 1, n), 0.02
+    assert np.allclose(accelerations(pos, mass, eps), accelerations_numpy(pos, mass, eps), rtol=1e-12, atol=0)
+    assert np.isclose(potential_energy(pos, mass, eps), potential_energy_numpy(pos, mass, eps), rtol=1e-12)
+
+
+@pytest.mark.parametrize("n", [50, 600])
+def test_per_particle_potentials_sum_to_potential_energy(n):
+    from nbody.gravity import potentials
+    pos, mass, eps = rng.normal(size=(n, 3)), rng.uniform(0.1, 1, n), 0.02
+    assert np.isclose(0.5 * np.sum(mass * potentials(pos, mass, eps)), potential_energy(pos, mass, eps), rtol=1e-12)
+
+
+@pytest.mark.skipif(os.cpu_count() < 4, reason="needs several cores to see a parallel speedup")
+def test_parallel_build_really_runs_in_parallel():
+    # Guards against a numba cache collision that once made the "parallel" build silently run serial code.
+    from nbody.gravity import _acc_serial, _acc_parallel
+    pos, mass = rng.normal(size=(1000, 3)), np.full(1000, 1e-3)
+    _acc_serial(pos, mass, 0.01), _acc_parallel(pos, mass, 0.01)          # compile outside the timing
+
+    def best_time(f):
+        times = []
+        for _ in range(5):
+            t0 = time.perf_counter()
+            f(pos, mass, 0.01)
+            times.append(time.perf_counter() - t0)
+        return min(times)
+
+    assert best_time(_acc_parallel) < 0.5 * best_time(_acc_serial)
