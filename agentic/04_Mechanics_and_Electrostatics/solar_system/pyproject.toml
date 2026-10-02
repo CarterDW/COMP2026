@@ -1,0 +1,13 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nbody"
+version = "0.1.0"
+description = "Shared library for the solar system formation project (units, gravity, integrators)."
+requires-python = ">=3.11"
+dependencies = ["numpy", "matplotlib", "numba"]
+
+[tool.setuptools]
+packages = ["nbody"]
