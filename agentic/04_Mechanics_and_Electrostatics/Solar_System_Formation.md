@@ -93,8 +93,20 @@ Kernel density estimate, isothermal equation of state, pressure force, and artif
 Add sink particles: gas above a density threshold becomes a single accreting star.
 - **Check:** Total angular momentum is conserved, including the sinks.
 - **Check:** The disk radius is close to the centrifugal radius r_c = j^2 / (G M).
-- **Check:** At least 95% of the mass ends up bound, unlike the ~20% loss in Rung 2.
-- **Handoff:** the disk surface density Sigma(r), the stellar mass, and the sink's accretion history.
+- **Check:** At least 95% of the mass ends up bound, unlike the ~20% loss in Rung 2 (measured 100%).
+- **Check:** Sink creation and accretion conserve mass, momentum and angular momentum (orbit + spin)
+  to ~1e-15. Accretion onto a sink follows analytic radial infall.
+- **Found:**
+  - A uniform rotating cloud on a bare lattice fragments into ~4 equal companions. The fix is a
+    randomly rotated, jittered lattice, a rho ~ 1/r cloud, and a smaller spin (beta = 0.02).
+    Protostellar heating, T = 280 K (d/AU)^-1/2, made no difference at N = 5000.
+  - At N = 12000 the result is one 0.74 Msun star with a 0.21 Msun disk peaking at ~100 AU
+    (Toomre Q ~ 1).
+  - The peak accretion rate, ~1e-4 Msun/yr, is close to the Larson-Penston-Hunter rate
+    46.9 cs^3/G, not the Shu rate.
+  - Viscosity spreads the disk to ~1.5x beyond j^2/GM.
+- **Handoff:** `solar_system/rung4_protostar_disk/handoff.npz`, holding the disk surface density
+  Sigma(R), the stellar mass, and the sink's accretion history.
 
 ### Rung 4b: Protostar Sub-Grid Model -> Stellar Ignition
 The protostar is ~1e3 times smaller than our resolution, so attach a one-zone stellar model to

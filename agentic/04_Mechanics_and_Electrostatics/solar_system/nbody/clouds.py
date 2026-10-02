@@ -60,3 +60,27 @@ def lattice_sphere(n, M, R):
     pos = np.array(np.meshgrid(g, g, g, indexing="ij")).reshape(3, -1).T
     pos = pos[np.linalg.norm(pos, axis=1) < R]
     return pos, np.zeros_like(pos), np.full(len(pos), M / len(pos))
+
+
+def solid_body_rotation(pos, mass, eps, beta):
+    """Velocities for rigid rotation about z with E_rot / |W| = beta."""
+    I = np.sum(mass * (pos[:, 0] ** 2 + pos[:, 1] ** 2))
+    omega = np.sqrt(2 * beta * abs(potential_energy(pos, mass, eps)) / I)
+    return omega * np.stack([-pos[:, 1], pos[:, 0], np.zeros(len(mass))], axis=1)
+
+
+def perturbed_lattice_sphere(n, M, R, jitter, rng):
+    """lattice_sphere, randomly rotated and with each particle displaced by up to jitter * (lattice spacing).
+
+    A bare cubic lattice seeds 4-fold symmetric perturbations, which a rotating collapse amplifies into four
+    identical fragments. A random rotation removes the alignment with the rotation axis; the jitter breaks the
+    exact symmetry.
+    """
+    q, r = np.linalg.qr(rng.normal(size=(3, 3)))
+    rotation = q * np.sign(np.diag(r))                    # uniformly random orthogonal matrix
+    a = R * (4 * np.pi / 3 / n) ** (1 / 3)
+    big, _, _ = lattice_sphere(int(n * 1.3**3), M, 1.3 * R)   # same spacing a, oversized; rotate, cut back
+    pos = big @ rotation.T + jitter * a * rng.uniform(-1, 1, size=big.shape)
+    pos = pos[np.linalg.norm(pos, axis=1) < R]
+    pos -= pos.mean(axis=0)
+    return pos, np.zeros_like(pos), np.full(len(pos), M / len(pos))

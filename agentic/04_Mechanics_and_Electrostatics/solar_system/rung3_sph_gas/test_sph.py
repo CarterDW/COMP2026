@@ -34,19 +34,21 @@ def test_lattice_density_and_smoothing_length():
     g = np.arange(n) * a
     pos = np.array(np.meshgrid(g, g, g, indexing="ij")).reshape(3, -1).T.astype(float)
     mass = np.ones(len(pos))
-    h, iters = smoothing_lengths(pos, mass, np.full(len(pos), 1.0))
+    h, found = smoothing_lengths(pos, mass, np.full(len(pos), 1.0))
     rho = density(pos, mass, h)
     interior = np.all((pos > 5) & (pos < n - 6), axis=1)       # more than 2h from every face
-    assert iters < 100
+    assert found
     assert np.allclose(rho[interior], 1.0, rtol=2e-3)
     assert np.allclose(h[interior], ETA * a, rtol=2e-3)
 
 
 def test_smoothing_lengths_are_self_consistent():
+    # Including an isolated far-out particle, which defeated the old fixed-point iteration.
     pos, vel, mass = uniform_sphere(1000, 1.0, 1.0, rng)
-    h, iters = smoothing_lengths(pos, mass, np.full(1000, 0.2))
-    assert iters < 100
-    assert np.allclose(h, ETA * (mass / density(pos, mass, h)) ** (1 / 3), rtol=1e-3)
+    pos[0] = [8.0, 0.0, 0.0]
+    h, found = smoothing_lengths(pos, mass, np.full(1000, 0.2))
+    assert found
+    assert np.allclose(h, ETA * (mass / density(pos, mass, h)) ** (1 / 3), rtol=1e-10)
 
 
 def test_pair_forces_conserve_momentum_angular_momentum_and_energy():
@@ -183,3 +185,19 @@ def test_evrard_matches_gadget1_at_the_same_resolution():
     for t_ref, ref in ((2.0, (0.10, 0.51, -1.22)), (3.0, (0.07, 0.67, -1.35))):
         i = np.argmin(abs(t - t_ref))
         assert np.allclose((K[i], U[i], W[i]), ref, atol=0.04)
+
+
+@pytest.mark.parametrize("start", ["random", "lattice"])
+def test_tree_neighbour_search_matches_direct_sums(start):
+    # The integrator uses a k-d tree and an explicit pair list; the O(N^2) functions are the reference.
+    from nbody.sph import neighbour_data, hydro_forces_pairs
+    pos, vel, mass = uniform_sphere(1500, 1.0, 1.0, rng) if start == "random" else lattice_sphere(1500, 1.0, 1.0)
+    vel = rng.normal(size=pos.shape) * 0.3
+    pos[0] = [8.0, 0.0, 0.0]                         # an isolated particle: needs the complete-list path
+    h_ref, _ = smoothing_lengths(pos, mass, np.full(len(mass), 0.1))
+    h, rho, pairs = neighbour_data(pos, mass, np.full(len(mass), 0.1), k=32)    # small k: forces the K-doubling path
+    assert np.allclose(h, h_ref, rtol=1e-12) and np.allclose(rho, density(pos, mass, h_ref), rtol=1e-12)
+    P, c = 0.1 * rho, np.full(len(mass), 0.3)
+    ref = hydro_forces(pos, vel, mass, h, rho, P, c, 1.0, 2.0)
+    for a, b in zip(hydro_forces_pairs(pairs, pos, vel, mass, h, rho, P, c, 1.0, 2.0), ref):
+        assert np.allclose(a, b, rtol=1e-12, atol=1e-12 * np.abs(b).max())
