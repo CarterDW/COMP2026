@@ -128,3 +128,24 @@ and see what works.
 what comes back, and check it against something you already know. The *analysis*
 and the *verification* are yours: a portfolio entry is only worth something if you
 can explain the techniques and why you believe the answer.
+# Notes from Surveys
+
+## Survey 1: Oct 2
+The first survey was useful, thanks to those of you that filled it out!
+
+**Be Ambitious:** Why does it feel hard to come up with exciting things? I think it's because we're not familiar with reaching far for things that we're only just learning. In the previous era it was normal to settle on things that are rock solid, but have a low ceiling. We can now prototype projects with a higher ceiling. To get good at coming up with agentic ideas, practice by writing down 5 and then ask *how can I push these further?* If you struggle to write down 5, chat with a model about what might be interesting given what you know. **What's exciting** is to be far more ambitious than we previously could, and then execute on it using a combination of our brains and agents. 
+
+**Portfolio Projects:** One student asked about how interesting seed projects can be. In case there is a misconception: the portfolio projects are not seeds, they are large efforts that should take 10-15 hours each. The seed, rather, is the 100 minutes of agentic coding in class. The sketch for the order of operations for ideation --> agentic idea --> seed --> portfolio project is:
+
+1. Understand topic of week. What is its essence? Upsides? Downsides?
+2. Pick something that fits the topic that you're excited about! 
+3. Determine a starting point that you can do in 100 minutes during the Friday class, to prototype the science and whether you're interested in spending 10-15 hours on it. Remember: in this era you can get pretty good prototypes in 100 minutes.
+4. Throughout the semester, pick 3 seeds you want to grow and take 10-15 hours to push the boundaries of the science, collecting demonstrative and exciting results that will be presented on a website.
+
+Remember that you can choose 2 instead of 3 if you replace the third with a research-relevant project with an advisor.
+
+**Balancing Thinking vs. Agentic Production:** A few times now we've talked about how if you underspecify and don't break projects into phases, the agent can go wild for 30 minutes and produce 3000 lines of code across 5 different files. **This is not what we want!** Two strategies for mitigating it, with or without agents:
+1. In a markdown file, brainstorm the steps of the project ahead of time, noting potential failure modes, algorithms to consider, and what *verification* means in that step; don't proceed to the next step until verified. Point Claude to the markdown file and demand you use that structure.
+2. Use an ``ipynb`` instead and structure the notebook in a way similar to the markdown. Use CoPilot to help you fill in the code. Code a good bit of it yourself, sometimes using its autocomplete suggestions! **Do this at least a few times this semester so you get a sense of CoPilot vs. Claude Code.**
+
+**Small Comments:** Some people like how manual days are approachable because they're just learning Python. Others want more challenge problems; I'll try to do that. Generally, though, people like the balance of those days (learning on blackboard + doing interesting problems) vs. stretching on agentic days.
