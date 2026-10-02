@@ -77,8 +77,17 @@ A cold, uniform sphere of N particles with no gas.
 ### Rung 3: Gas via SPH
 Kernel density estimate, isothermal equation of state, pressure force, and artificial viscosity
 (the dissipation that stops a gas cloud bouncing like collisionless particles).
-- **Check:** The density of a uniform particle lattice is recovered.
-- **Check (Jeans test):** A cloud above the Jeans mass collapses, and one below it does not.
+- **Check:** The density of a uniform particle lattice is recovered, and pair forces conserve momentum,
+  angular momentum and energy exactly.
+- **Check (Evrard 1988):** An adiabatic collapse conserves energy to ~2e-4 and matches GADGET-1's
+  published energy curves at the same particle number.
+- **Check (Jeans test):** U/|W| < 5/pi^2 always collapses (Truelove et al. 1998), and less than one
+  Jeans mass (U/|W| > 1) does not. The measured threshold, U/|W| = 0.71-0.78, lies in between.
+- **Check:** An isothermal cloud's core free-falls until the boundary rarefaction arrives, and
+  K + W + E_radiated is conserved.
+- **Found:** Random particle positions give ~40% density noise, so SPH starts from a lattice. The
+  energy equation must use only the particle's own pressure; the fully symmetric form drove u
+  negative.
 
 ### Rung 4: Rotating Collapse -> Protostar + Disk
 Add sink particles: gas above a density threshold becomes a single accreting star.

@@ -46,3 +46,17 @@ def cycloid_radius(t, t_ff):
     eta = np.linspace(0, np.pi / 2, 20001)
     t_of_eta = t_ff * (2 / np.pi) * (eta + np.sin(eta) * np.cos(eta))
     return np.cos(np.interp(t, t_of_eta, eta)) ** 2
+
+
+def lattice_sphere(n, M, R):
+    """About n equal-mass particles on a cubic lattice inside a sphere: uniform density without Poisson noise.
+
+    SPH needs this: randomly placed particles give density estimates with ~40% scatter, which act as spurious
+    pressure forces. Returns pos, vel (zeros), mass, with the exact particle count set by the lattice.
+    """
+    a = R * (4 * np.pi / 3 / n) ** (1 / 3)
+    k = int(np.ceil(R / a)) + 1
+    g = (np.arange(-k, k) + 0.5) * a          # offset by a/2: symmetric about the origin
+    pos = np.array(np.meshgrid(g, g, g, indexing="ij")).reshape(3, -1).T
+    pos = pos[np.linalg.norm(pos, axis=1) < R]
+    return pos, np.zeros_like(pos), np.full(len(pos), M / len(pos))

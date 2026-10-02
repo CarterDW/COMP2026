@@ -19,6 +19,11 @@ From any directory:
 - `python check_units.py` (or any script path) runs a script. Scripts write their plots to
   their own rung's `plots/` folder.
 
+## Performance notes
+- numba-parallel code uses every core. Never run two heavy scripts at once: they oversubscribe the CPU
+  and both crawl.
+- Slow reference tests are opt-in: `RUN_SLOW=1 pytest`.
+
 ## Code rules
 - Short, readable numpy, with numba only where speed demands it.
 - No `try/except` fallbacks and no silent defaults.
