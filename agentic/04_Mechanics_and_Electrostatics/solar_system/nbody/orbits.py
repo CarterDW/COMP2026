@@ -36,3 +36,14 @@ def figure_eight():
     pos = np.array([x1, -x1, np.zeros(3)])
     vel = np.array([-v3 / 2, -v3 / 2, v3])
     return pos, vel, np.full(3, 1 / G)
+
+
+def orbital_elements(x, u, mu):
+    """Semi-major axis, eccentricity and inclination (rad) from heliocentric positions/velocities, shape (N, 3)."""
+    r = np.linalg.norm(x, axis=1)
+    energy = 0.5 * np.sum(u**2, axis=1) - mu / r
+    a = -mu / (2 * energy)
+    L = np.cross(x, u)
+    e_vec = np.cross(u, L) / mu - x / r[:, None]
+    inc = np.arccos(np.clip(L[:, 2] / np.linalg.norm(L, axis=1), -1, 1))
+    return a, np.linalg.norm(e_vec, axis=1), inc

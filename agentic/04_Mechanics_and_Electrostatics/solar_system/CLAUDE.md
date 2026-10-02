@@ -23,6 +23,9 @@ From any directory:
 - numba-parallel code uses every core. Never run two heavy scripts at once: they oversubscribe the CPU
   and both crawl.
 - Slow reference tests are opt-in: `RUN_SLOW=1 pytest`.
+- numba's on-disk cache (`cache=True`) can go stale when a *called* function changes, which shows up as a segfault.
+  `nbody/hybrid.py` is therefore not cached. If a cached function ever segfaults after an edit, delete
+  `nbody/__pycache__/*.nbi` and `*.nbc`.
 
 ## Code rules
 - Short, readable numpy, with numba only where speed demands it.
