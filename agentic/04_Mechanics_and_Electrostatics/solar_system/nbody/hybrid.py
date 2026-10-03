@@ -252,14 +252,21 @@ def step(Q, v, m, R, alive, big, comp, rc, mu, M_star, dt, log, n_log, t_now):
     Hamiltonian would change every step and the scheme would no longer be symplectic; recompute it only when
     masses change (mergers, gas accretion).
     """
-    return _step(Q, v, m, R, alive, big, comp, rc, mu, M_star, dt, log, n_log, t_now, np.ones(len(m), dtype=np.int64))
+    acc = far_accelerations(Q, m, alive, big, rc)
+    return _step(Q, v, m, R, alive, big, comp, rc, mu, M_star, dt, log, n_log, t_now, np.ones(len(m), dtype=np.int64),
+                 acc)
 
 
 @njit
-def step_resolving_pericenters(Q, v, m, R, alive, big, comp, rc, mu, M_star, dt, log, n_log, t_now):
-    """step(), but each body that passes pericenter quickly (pericenter_substeps) drifts in its own substeps."""
+def step_resolving_pericenters(Q, v, m, R, alive, big, comp, rc, mu, M_star, dt, log, n_log, t_now, acc):
+    """step(), but each body that passes pericenter quickly (pericenter_substeps) drifts in its own substeps.
+
+    acc: the far accelerations at the current Q (far_accelerations), overwritten with those at the new Q, so the
+    next step's opening kick reuses the previous step's closing one (same result, half the force evaluations).
+    Recompute it whenever Q, m, alive or rc change between steps (removals, a new rc after mergers).
+    """
     n_sub = pericenter_substeps(Q, v, alive, mu, dt)
-    return _step(Q, v, m, R, alive, big, comp, rc, mu, M_star, dt, log, n_log, t_now, n_sub)
+    return _step(Q, v, m, R, alive, big, comp, rc, mu, M_star, dt, log, n_log, t_now, n_sub, acc)
 
 
 @njit
@@ -276,11 +283,12 @@ def _substepped_drift(x, u, mu, dt, k, p0, p1, M_star):
 
 
 @njit
-def _step(Q, v, m, R, alive, big, comp, rc, mu, M_star, dt, log, n_log, t_now, n_sub):
+def _step(Q, v, m, R, alive, big, comp, rc, mu, M_star, dt, log, n_log, t_now, n_sub, acc):
     """step() in which each body i with n_sub[i] > 1 that is not in an encounter does its jumps and Kepler drift
-    in n_sub[i] substeps (_substepped_drift); everything else is the standard hybrid step."""
+    in n_sub[i] substeps (_substepped_drift); everything else is the standard hybrid step. acc: far accelerations
+    at the current Q on entry, at the new Q on return."""
     n = len(m)
-    v += 0.5 * dt * far_accelerations(Q, m, alive, big, rc)
+    v += 0.5 * dt * acc
     p = np.zeros(3)
     for i in range(n):
         if alive[i]:
@@ -339,7 +347,8 @@ def _step(Q, v, m, R, alive, big, comp, rc, mu, M_star, dt, log, n_log, t_now, n
     for i in range(n):
         if alive[i] and not own_jumps[i]:
             Q[i] += 0.5 * dt * p / M_star
-    v += 0.5 * dt * far_accelerations(Q, m, alive, big, rc)
+    acc[:] = far_accelerations(Q, m, alive, big, rc)
+    v += 0.5 * dt * acc
     return n_log
 
 

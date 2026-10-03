@@ -36,6 +36,7 @@ T_RUN = float(option("--myr", 20)) * 1e6
 N_PL = int(option("--planetesimals", 0))
 TAG = f"terrestrial_seed{SEED}" + (f"_pl{N_PL}" if N_PL else "")
 OUT, CHECKPOINT = HERE / "data" / f"{TAG}.npz", HERE / "data" / f"{TAG}_checkpoint.npz"
+PARTIAL = HERE / "data" / f"{TAG}_checkpoint_partial.npz"
 (HERE / "data").mkdir(exist_ok=True)
 R_IN, R_OUT, R_STAR_HIT, R_EJECT = 0.7, 4.0, 0.2, 100.0
 RHO_ROCK = 3.0 / 5.94e-7                                         # 3 g/cm^3 in Msun/AU^3
@@ -92,11 +93,14 @@ rc = hy.critical_radii(Q, v, m, alive, mu, dt)
 
 @njit
 def run_steps(Q, v, m, R, alive, big, comp, rc, mu, M_star, dt, n_steps, t0, log, n_log):
+    acc = hy.far_accelerations(Q, m, alive, big, rc)            # the step's force cache (see step_resolving_pericenters)
     for k in range(n_steps):
         n_before = n_log
-        n_log = hy.step_resolving_pericenters(Q, v, m, R, alive, big, comp, rc, mu, M_star, dt, log, n_log, t0 + k * dt)
+        n_log = hy.step_resolving_pericenters(Q, v, m, R, alive, big, comp, rc, mu, M_star, dt, log, n_log, t0 + k * dt,
+                                              acc)
         if n_log > n_before:
             rc[:] = hy.critical_radii(Q, v, m, alive, mu, dt)
+            acc[:] = hy.far_accelerations(Q, m, alive, big, rc)
     return n_log
 
 
@@ -148,9 +152,10 @@ while t < T_RUN - 1e-6:
     record()
     if len(snap["t"]) % 10 == 1:
         dE = (hy.total_energy(Q, v, m, alive, big, mu, M_star) + log[:n_log, 5].sum() + E_removed) / E0 - 1
-        np.savez(CHECKPOINT, Q=Q, v=v, m=m, R=R, alive=alive, comp=comp, rc=rc, t=t, n_log=n_log, log=log[:n_log],
+        np.savez(PARTIAL, Q=Q, v=v, m=m, R=R, alive=alive, comp=comp, rc=rc, t=t, n_log=n_log, log=log[:n_log],
                  E_removed=E_removed, M_star_hit=M_star_hit, M_ejected=M_ejected,
                  **{"snap_" + k: np.array(vals) for k, vals in snap.items()})
+        os.replace(PARTIAL, CHECKPOINT)                         # atomic: a kill mid-write never corrupts the checkpoint
         top = np.sort(m[:n_emb][alive[:n_emb]])[::-1][:4] / M_EARTH
         print(f"t = {t / 1e6:6.2f} Myr ({time.time() - t_wall:6.0f} s): {int(alive[:n_emb].sum())} embryos, "
               f"{int(alive[n_emb:n_emb + N_PL].sum())} planetesimals, "
