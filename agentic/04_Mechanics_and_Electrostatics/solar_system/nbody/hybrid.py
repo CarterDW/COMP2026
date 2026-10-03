@@ -18,9 +18,10 @@ from numba import njit, prange
 from nbody.units import G
 from nbody.kepler import kepler_drift
 
-N_HILL = 6.0          # changeover radius: this many Hill radii (energy error ~ dt^2 and falls as this grows) ...
+N_HILL = 3.0          # changeover radius: this many Hill radii (MERCURY/MERCURIUS standard; 6 made a 2.5 MJ
+                      # giant's zone 3.6 AU wide, so nearby bodies sat in slow Runge-Kutta encounters every step) ...
 N_VEL = 0.4           # ... or the distance covered in this fraction of a step, whichever is larger
-RK_RTOL = 1e-12       # Dormand-Prince tolerance during encounters
+RK_RTOL = 1e-10       # Dormand-Prince tolerance during encounters (1e-12 cost ~1.6x more for no useful gain: Rung 6 tests)
 
 
 @njit

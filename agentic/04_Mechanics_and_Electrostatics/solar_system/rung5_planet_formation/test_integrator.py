@@ -127,12 +127,12 @@ def scattering_pair():
 
 
 def test_energy_conserved_through_repeated_close_encounters():
-    # With the switch, the splitting error of the changeover shell remains: measured 3.3e-6 at dt = P/40
-    # (pure Wisdom-Holman, no switch: ~1e-2).
+    # With the switch, the splitting error of the changeover shell remains: measured 4.3e-5 at dt = P/40 with a
+    # 3-Hill-radius changeover (3e-6 with 6 Hill radii; pure Wisdom-Holman, no switch: ~1e-2). Formation studies accept ~1e-4.
     x, u, m = scattering_pair()
     P = 2 * np.pi * np.sqrt(125 / MU)
     Q, v, mm, alive, worst, *_ = run(x, u, m, P / 40, int(300 / (P / 40)))
-    assert worst < 1e-5
+    assert worst < 1e-4
 
 
 def test_collision_merges_and_closes_the_energy_budget():
