@@ -4,7 +4,7 @@ Embryos come from our own disk (Rung 5's viscous disk: rock inside the snow line
 isolation mass and 10 mutual Hill radii apart, from 0.7 to 3.5 AU. The giant is the Rung 5 survivor. Gravity and
 mergers only. Bodies inside 0.2 AU (hit the star) or beyond 100 AU (ejected) are removed and their energy tallied.
 
-    python path/to/smoke_test.py [T_MYR]            -> data/smoke.npz, then the checks are printed
+    python path/to/smoke_run.py [T_MYR]            -> data/smoke.npz, then the checks are printed
 """
 import os
 os.environ["NUMBA_NUM_THREADS"] = "1"

@@ -318,3 +318,42 @@ def from_heliocentric(x_h, u_h, m, M_star):
 def to_heliocentric(Q, v, m, M_star):
     """Democratic heliocentric -> heliocentric velocities: u_h = v - v_star with v_star = -sum m v / M_star."""
     return Q.copy(), v + (m @ v) / M_star
+
+
+PERI_THETA = 0.42     # max angle (rad) a body may sweep near pericenter per (sub)step: 2 pi / 15, what a circular
+                      # orbit at the inner edge gets with dt = P_in / 15, so near-circular bodies never trigger it
+PERI_ZONE = 5.0       # substep while a body is within this many pericenter distances (3 left ~1% errors)
+
+
+@njit
+def pericenter_substeps(Q, v, alive, mu, dt):
+    """How many equal substeps this step needs so that every body near pericenter (within PERI_ZONE pericenter
+    distances, or reaching pericenter during the step) sweeps at most PERI_THETA radians per substep at its
+    pericenter speed. Wisdom-Holman cannot resolve a pericenter passage much faster than one step (Rauch & Holman
+    1999); here it shows up through the giant's reflex term. Returns k >= 1."""
+    k = 1
+    for i in range(len(Q)):
+        if not alive[i]:
+            continue
+        x0, x1, x2 = Q[i, 0], Q[i, 1], Q[i, 2]
+        u0, u1, u2 = v[i, 0], v[i, 1], v[i, 2]
+        r = np.sqrt(x0 * x0 + x1 * x1 + x2 * x2)
+        vr = (x0 * u0 + x1 * u1 + x2 * u2) / r
+        v2 = u0 * u0 + u1 * u1 + u2 * u2
+        h2 = (x1 * u2 - x2 * u1) ** 2 + (x2 * u0 - x0 * u2) ** 2 + (x0 * u1 - x1 * u0) ** 2
+        e = np.sqrt(max(0.0, 1 + (v2 - 2 * mu / r) * h2 / mu**2))
+        q = h2 / (mu * (1 + e))                                 # pericenter distance
+        if r > PERI_ZONE * q and (r - q) > -vr * dt:           # far from pericenter, and not reaching it this step
+            continue
+        v_p = np.sqrt(mu * (1 + e) / q)
+        k = max(k, int(np.ceil(v_p * dt / (q * PERI_THETA))))
+    return min(k, 1000)
+
+
+@njit
+def step_resolving_pericenters(Q, v, m, R, alive, big, comp, rc, mu, M_star, dt, log, n_log, t_now):
+    """step(), split into pericenter_substeps(...) equal substeps when a fast pericenter passage needs it."""
+    k = pericenter_substeps(Q, v, alive, mu, dt)
+    for j in range(k):
+        n_log = step(Q, v, m, R, alive, big, comp, rc, mu, M_star, dt / k, log, n_log, t_now + j * dt / k)
+    return n_log

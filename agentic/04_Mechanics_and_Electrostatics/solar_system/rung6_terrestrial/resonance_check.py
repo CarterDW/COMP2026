@@ -4,7 +4,7 @@
 resonance, at a = a_giant (q/p)^(2/3), have their eccentricities pumped. First-order resonances (2:1) act even on a
 circular giant; higher-order ones (3:1, 5:2) scale with the giant's eccentricity, which is tiny (0.003) here.
 
-    python path/to/resonance_test.py [T_KYR]          -> printed checks and plots/resonances.png
+    python path/to/resonance_check.py [T_KYR]          -> printed checks and plots/resonances.png
 """
 import os
 os.environ["NUMBA_NUM_THREADS"] = "1"
