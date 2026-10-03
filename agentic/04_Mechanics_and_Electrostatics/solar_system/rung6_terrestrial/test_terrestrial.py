@@ -1,4 +1,4 @@
-"""Rung 6: resolving close pericenter passages in the hybrid integrator (nbody/hybrid.py)."""
+"""Rung 6: resolving close pericenter passages in the hybrid integrator (per-body substeps, nbody/hybrid.py)."""
 import numpy as np
 import pytest
 import nbody.hybrid as hy
@@ -38,7 +38,22 @@ def test_near_circular_orbits_never_trigger_substeps():
     vc = np.sqrt(MU / np.array([0.7, 1.0, 2.0]))
     Q = np.array([[0.7, 0, 0], [0, 1.0, 0], [-2.0, 0, 0]])
     v = np.array([[0, vc[0], 0], [-vc[1], 0, 0], [0, -vc[2], 0]])
-    assert hy.pericenter_substeps(Q, v, np.ones(3, bool), MU, DT) == 1
+    assert (hy.pericenter_substeps(Q, v, np.ones(3, bool), MU, DT) == 1).all()
+
+
+def test_without_fast_pericenters_the_step_is_unchanged():
+    # Near-circular bodies are never substepped, so step_resolving_pericenters must reproduce step() bit for bit.
+    x, u, m = embryo_and_giant(1.0, 0.99)
+    runs = []
+    for stepper in (hy.step, hy.step_resolving_pericenters):
+        Q, v = hy.from_heliocentric(x, u, m, M_STAR)
+        alive, big, R = np.ones(2, bool), np.ones(2, bool), np.full(2, 1e-9)
+        comp, log = np.column_stack([m, np.zeros((2, 3))]), np.zeros((4, 6))
+        rc = hy.critical_radii(Q, v, m, alive, MU, DT)
+        for k in range(2000):
+            stepper(Q, v, m, R, alive, big, comp, rc, MU, M_STAR, DT, log, 0, k * DT)
+        runs.append(np.concatenate([Q, v]))
+    assert np.array_equal(runs[0], runs[1])
 
 
 @pytest.mark.parametrize("a, q", [(1.5, 0.2), (2.5, 0.3)])

@@ -252,6 +252,33 @@ def step(Q, v, m, R, alive, big, comp, rc, mu, M_star, dt, log, n_log, t_now):
     Hamiltonian would change every step and the scheme would no longer be symplectic; recompute it only when
     masses change (mergers, gas accretion).
     """
+    return _step(Q, v, m, R, alive, big, comp, rc, mu, M_star, dt, log, n_log, t_now, np.ones(len(m), dtype=np.int64))
+
+
+@njit
+def step_resolving_pericenters(Q, v, m, R, alive, big, comp, rc, mu, M_star, dt, log, n_log, t_now):
+    """step(), but each body that passes pericenter quickly (pericenter_substeps) drifts in its own substeps."""
+    n_sub = pericenter_substeps(Q, v, alive, mu, dt)
+    return _step(Q, v, m, R, alive, big, comp, rc, mu, M_star, dt, log, n_log, t_now, n_sub)
+
+
+@njit
+def _substepped_drift(x, u, mu, dt, k, p0, p1, M_star):
+    """One body's jump(dt/2) drift(dt) jump(dt/2), split into k substeps of jump(h/2) drift(h) jump(h/2), h = dt/k.
+    The total momentum p behind the jump (the star's reflex motion) goes linearly from p0 to p1 over the step."""
+    x, u = x.copy(), u.copy()
+    h = dt / k
+    for s in range(k):
+        x += 0.5 * h * (p0 + (p1 - p0) * s / k) / M_star
+        x, u = kepler_drift(x, u, mu, h)
+        x += 0.5 * h * (p0 + (p1 - p0) * (s + 1) / k) / M_star
+    return x, u
+
+
+@njit
+def _step(Q, v, m, R, alive, big, comp, rc, mu, M_star, dt, log, n_log, t_now, n_sub):
+    """step() in which each body i with n_sub[i] > 1 that is not in an encounter does its jumps and Kepler drift
+    in n_sub[i] substeps (_substepped_drift); everything else is the standard hybrid step."""
     n = len(m)
     v += 0.5 * dt * far_accelerations(Q, m, alive, big, rc)
     p = np.zeros(3)
@@ -261,6 +288,7 @@ def step(Q, v, m, R, alive, big, comp, rc, mu, M_star, dt, log, n_log, t_now):
     for i in range(n):
         if alive[i]:
             Q[i] += 0.5 * dt * p / M_star
+    p0 = p.copy()
 
     # Kepler-drift everyone, then find pairs whose separation dips below the changeover radius during the step.
     Q1, v1 = _kepler_all(Q, v, alive, mu, dt)
@@ -283,10 +311,19 @@ def step(Q, v, m, R, alive, big, comp, rc, mu, M_star, dt, log, n_log, t_now):
                 in_enc[j] = True
                 ri, rj = _root(group, i), _root(group, j)
                 group[max(ri, rj)] = min(ri, rj)
+    p1 = np.zeros(3)                                  # the momentum after the drift, predicted from the Kepler drifts
+    for i in range(n):
+        if alive[i]:
+            p1 += m[i] * v1[i]
+    own_jumps = np.zeros(n, dtype=np.bool_)
     for i in range(n):
         if alive[i] and not in_enc[i]:
-            Q[i] = Q1[i]
-            v[i] = v1[i]
+            if n_sub[i] > 1:
+                Q[i], v[i] = _substepped_drift(Q[i] - 0.5 * dt * p0 / M_star, v[i], mu, dt, n_sub[i], p0, p1, M_star)
+                own_jumps[i] = True
+            else:
+                Q[i] = Q1[i]
+                v[i] = v1[i]
     flagged = np.flatnonzero(in_enc)
     roots = np.empty(len(flagged), dtype=np.int64)
     for a in range(len(flagged)):
@@ -300,7 +337,7 @@ def step(Q, v, m, R, alive, big, comp, rc, mu, M_star, dt, log, n_log, t_now):
         if alive[i]:
             p += m[i] * v[i]
     for i in range(n):
-        if alive[i]:
+        if alive[i] and not own_jumps[i]:
             Q[i] += 0.5 * dt * p / M_star
     v += 0.5 * dt * far_accelerations(Q, m, alive, big, rc)
     return n_log
@@ -327,11 +364,12 @@ PERI_ZONE = 5.0       # substep while a body is within this many pericenter dist
 
 @njit
 def pericenter_substeps(Q, v, alive, mu, dt):
-    """How many equal substeps this step needs so that every body near pericenter (within PERI_ZONE pericenter
-    distances, or reaching pericenter during the step) sweeps at most PERI_THETA radians per substep at its
-    pericenter speed. Wisdom-Holman cannot resolve a pericenter passage much faster than one step (Rauch & Holman
-    1999); here it shows up through the giant's reflex term. Returns k >= 1."""
-    k = 1
+    """For each body, how many equal substeps its drift needs so that, if it is near pericenter (within PERI_ZONE
+    pericenter distances, or reaching pericenter during the step), it sweeps at most PERI_THETA radians per substep
+    at its pericenter speed; 1 otherwise. Wisdom-Holman cannot resolve a pericenter passage much faster than one step
+    (Rauch & Holman 1999); here it shows up through the star's reflex (jump) term, so only that body's jumps and
+    Kepler drift are split (step_resolving_pericenters)."""
+    n_sub = np.ones(len(Q), dtype=np.int64)
     for i in range(len(Q)):
         if not alive[i]:
             continue
@@ -346,14 +384,5 @@ def pericenter_substeps(Q, v, alive, mu, dt):
         if r > PERI_ZONE * q and (r - q) > -vr * dt:           # far from pericenter, and not reaching it this step
             continue
         v_p = np.sqrt(mu * (1 + e) / q)
-        k = max(k, int(np.ceil(v_p * dt / (q * PERI_THETA))))
-    return min(k, 1000)
-
-
-@njit
-def step_resolving_pericenters(Q, v, m, R, alive, big, comp, rc, mu, M_star, dt, log, n_log, t_now):
-    """step(), split into pericenter_substeps(...) equal substeps when a fast pericenter passage needs it."""
-    k = pericenter_substeps(Q, v, alive, mu, dt)
-    for j in range(k):
-        n_log = step(Q, v, m, R, alive, big, comp, rc, mu, M_star, dt / k, log, n_log, t_now + j * dt / k)
-    return n_log
+        n_sub[i] = min(1000, max(1, int(np.ceil(v_p * dt / (q * PERI_THETA)))))
+    return n_sub
