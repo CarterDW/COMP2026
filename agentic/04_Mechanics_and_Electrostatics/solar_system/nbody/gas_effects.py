@@ -57,16 +57,20 @@ CS2_1AU = K_OVER_MH / MU_GAS * T_1AU           # cs^2 at 1 AU; cs^2 ~ R^-1/2
 def disk_state(R, t, disk):
     """Gas surface density, scale height, Omega, viscosity at radius R and time t.
 
-    disk = (M0, R1, t_nu, M_star, alpha, t0, pebbles_on, migration_on): the similarity solution's parameters, the
-    dispersal start, and which optional physics is on.
+    disk = (M0, R1, t_nu, M_star, alpha_acc, t0, pebbles_on, migration_on, alpha_turb): the similarity solution's
+    parameters (its t_nu set by alpha_acc), the dispersal start, which optional physics is on, and the midplane
+    turbulence. Two alphas, as observations suggest: disks accrete (alpha_acc ~ 1e-3, largely through magnetic winds)
+    while their midplanes are much less turbulent (alpha_turb <~ 1e-4 from dust settling, Pinte et al. 2016).
+    The returned viscosity is the local turbulent one, alpha_turb cs^2 / Omega: it sets gap depths and torque
+    saturation near planets.
     """
-    M0, R1, t_nu, M_star, alpha, t0 = disk[0], disk[1], disk[2], disk[3], disk[4], disk[5]
+    M0, R1, t_nu, M_star, t0 = disk[0], disk[1], disk[2], disk[3], disk[5]
     T = 1 + t / t_nu
     sigma = M0 / (2 * np.pi * R1 * R) * T**-1.5 * np.exp(-R / (R1 * T)) * np.exp(-max(t - t0, 0.0) / TAU_DISPERSAL)
     omega = np.sqrt(G * M_star / R**3)
     cs2 = CS2_1AU / np.sqrt(R)
     H = np.sqrt(cs2) / omega
-    return sigma, H, omega, alpha * cs2 / omega
+    return sigma, H, omega, disk[8] * cs2 / omega
 
 
 @njit
@@ -97,7 +101,7 @@ def pebble_capture_rate(m, R, t, disk, flux):
 
 
 @njit
-def accrete_pebbles(Q, v, m, alive, big, t, dt, disk, v_star):
+def accrete_pebbles(Q, v, m, alive, big, comp, t, dt, disk, v_star):
     """Pass the pebble flux from the outside in; each embryo takes its share. Returns True if any mass changed."""
     flux = pebble_flux(t, disk)
     idx = np.flatnonzero(alive & big)
@@ -120,6 +124,7 @@ def accrete_pebbles(Q, v, m, alive, big, t, dt, disk, v_star):
         v[i, 1] = (m[i] * v[i, 1] + dm * vy) / (m[i] + dm)
         v[i, 2] = (m[i] * v[i, 2] + dm * v_star[2]) / (m[i] + dm)
         m[i] += dm
+        comp[i, 2] += dm
         flux -= rate
         changed = True
     return changed
@@ -137,13 +142,13 @@ def gas_capture_rate(m, R, t, disk):
     """min(Kelvin-Helmholtz rate, D Sigma_gap) for a core of mass m at radius R (Tanigawa & Tanaka 2016)."""
     sigma, H, omega, nu = disk_state(R, t, disk)
     q, h = m / disk[3], H / R
-    K = h**-5 * q**2 / disk[4]
+    K = h**-5 * q**2 / disk[8]                             # gap depth: set by the midplane turbulence
     hydro = 0.29 * h**-2 * q ** (4 / 3) * R**2 * omega * sigma / (1 + 0.034 * K)
     return min(m * (m / M_EARTH) ** 3 / 1e9, hydro)
 
 
 @njit
-def accrete_gas(Q, v, m, R, alive, big, t, dt, disk, v_star):
+def accrete_gas(Q, v, m, R, alive, big, comp, t, dt, disk, v_star):
     """Cores above M_CRIT take gas from the disk inflow, outermost first. Returns True if any mass changed."""
     inflow = disk_inflow(t, disk)
     idx = np.flatnonzero(alive & big & (m >= M_CRIT))
@@ -164,6 +169,7 @@ def accrete_gas(Q, v, m, R, alive, big, t, dt, disk, v_star):
         v[i, 1] = (m[i] * v[i, 1] + dm * (vg * Q[i, 0] / Rcyl + v_star[1])) / M_new
         v[i, 2] = (m[i] * v[i, 2] + dm * v_star[2]) / M_new
         m[i] = M_new
+        comp[i, 3] += dm
         if m[i] > 2 * M_CRIT:                                    # mostly gas: Jupiter-like density
             R[i] = max(R[i], (3 * m[i] / (4 * np.pi * RHO_GIANT)) ** (1 / 3))
         inflow -= rate
@@ -245,12 +251,12 @@ def migration_torque(m, R, t, disk):
     alpha_slope = 1 + R / (disk[1] * T_disk)                # Sigma ~ R^-1 exp(-R / (R1 T))
     beta_slope = 0.5                                          # T ~ R^-1/2
     total = type1_torque(m, R, t, disk, alpha_slope, beta_slope, thermal_diffusivity(R, t, disk))[0]
-    K = (H / R) ** -5 * (m / disk[3]) ** 2 / disk[4]
+    K = (H / R) ** -5 * (m / disk[3]) ** 2 / disk[8]
     return total / (1 + 0.04 * K)
 
 
 @njit
-def apply_gas(Q, v, m, R, alive, big, t, dt, disk, M_star):
+def apply_gas(Q, v, m, R, alive, big, comp, t, dt, disk, M_star):
     """Drag, tidal damping and gas accretion over dt. Returns True if any mass changed (rc must be updated).
 
     Written with scalars only: numba would heap-allocate every small temporary array, once per body per step.
@@ -293,28 +299,30 @@ def apply_gas(Q, v, m, R, alive, big, t, dt, disk, M_star):
             L = m[i] * abs(x * hy - y * hx)
             f = np.exp(migration_torque(m[i], Rcyl, t, disk) * dt / L)
             v[i, 0], v[i, 1], v[i, 2] = hx * f + vsx, hy * f + vsy, hz * f + vsz
-    mass_changed = accrete_gas(Q, v, m, R, alive, big, t, dt, disk, np.array([vsx, vsy, vsz]))
+    mass_changed = accrete_gas(Q, v, m, R, alive, big, comp, t, dt, disk, np.array([vsx, vsy, vsz]))
     if disk[6] > 0:
-        mass_changed = accrete_pebbles(Q, v, m, alive, big, t, dt, disk, np.array([vsx, vsy, vsz])) or mass_changed
+        mass_changed = accrete_pebbles(Q, v, m, alive, big, comp, t, dt, disk, np.array([vsx, vsy, vsz])) or mass_changed
     return mass_changed
 
 
 @njit
-def evolve(Q, v, m, R, alive, big, rc, mu, M_star, dt, n_steps, t_start, disk, log, n_log, r_out):
+def evolve(Q, v, m, R, alive, big, comp, rc, mu, M_star, dt, n_steps, t_start, disk, log, n_log, r_out):
     """n_steps hybrid steps with gas effects. Bodies beyond r_out (AU) or inside 1 AU (accreted by the inner disk
-    or star) are removed. Returns n_log; rc is updated in place whenever masses change."""
+    or star) are removed. comp (N, 4) tracks each body's mass by origin: seed solids, solids from collisions,
+    pebbles, gas. Returns n_log; rc is updated in place whenever masses change."""
     t = t_start
     for k in range(n_steps):
         n_before = n_log
-        n_log = step(Q, v, m, R, alive, big, rc, mu, M_star, dt, log, n_log, t)
+        n_log = step(Q, v, m, R, alive, big, comp, rc, mu, M_star, dt, log, n_log, t)
         t += dt
-        changed = apply_gas(Q, v, m, R, alive, big, t, dt, disk, M_star)
+        changed = apply_gas(Q, v, m, R, alive, big, comp, t, dt, disk, M_star)
         for i in range(len(m)):
             if alive[i]:
                 r2 = Q[i, 0] ** 2 + Q[i, 1] ** 2 + Q[i, 2] ** 2
                 if r2 > r_out**2 or r2 < 1.0:
                     alive[i] = False
                     m[i] = 0.0
+                    comp[i, :] = 0.0
         if changed or n_log > n_before:
             rc[:] = critical_radii(Q, v, m, alive, mu, dt)
     return n_log

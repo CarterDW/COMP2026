@@ -156,8 +156,16 @@ def _root(group, i):
 
 
 @njit
-def merge(i, j, Q, v, m, R, alive, big):
-    """Perfect merger of j into i: mass and momentum conserved, at the center of mass, volumes added."""
+def merge(i, j, Q, v, m, R, alive, big, comp):
+    """Perfect merger of j into i: mass and momentum conserved, at the center of mass, volumes added.
+
+    comp rows are (seed solids, solids gained in collisions, pebbles, gas). j's seed and collision mass become
+    collision mass of i; its pebbles and gas stay pebbles and gas, so the solid/gas split is kept.
+    """
+    comp[i, 1] += comp[j, 0] + comp[j, 1]
+    comp[i, 2] += comp[j, 2]
+    comp[i, 3] += comp[j, 3]
+    comp[j, :] = 0.0
     M = m[i] + m[j]
     Q[i] = (m[i] * Q[i] + m[j] * Q[j]) / M
     v[i] = (m[i] * v[i] + m[j] * v[j]) / M
@@ -189,7 +197,7 @@ def total_energy(Q, v, m, alive, big, mu, M_star):
 
 
 @njit
-def _encounter_drift(members, Q, v, m, R, alive, big, rc, mu, M_star, dt, log, n_log, t_now):
+def _encounter_drift(members, Q, v, m, R, alive, big, comp, rc, mu, M_star, dt, log, n_log, t_now):
     """Integrate the encounter set over dt; merge bodies that touch. Returns the updated event count."""
     k = len(members)
     y = np.zeros((k, 6))
@@ -221,7 +229,7 @@ def _encounter_drift(members, Q, v, m, R, alive, big, rc, mu, M_star, dt, log, n
                     if n_log < len(log):
                         log[n_log, 0], log[n_log, 1], log[n_log, 2] = t_now + t, keep, gone
                         log[n_log, 3], log[n_log, 4] = m[keep], m[gone]
-                    merge(keep, gone, Q, v, m, R, alive, big)
+                    merge(keep, gone, Q, v, m, R, alive, big, comp)
                     a_keep = a if keep == i else b
                     y[a_keep, 0:3] = Q[keep]
                     y[a_keep, 3:6] = v[keep]
@@ -236,7 +244,7 @@ def _encounter_drift(members, Q, v, m, R, alive, big, rc, mu, M_star, dt, log, n
 
 
 @njit
-def step(Q, v, m, R, alive, big, rc, mu, M_star, dt, log, n_log, t_now):
+def step(Q, v, m, R, alive, big, comp, rc, mu, M_star, dt, log, n_log, t_now):
     """One hybrid step. log rows: (time, survivor, absorbed, m_survivor, m_absorbed, energy lost). Returns n_log.
 
     rc: each body's changeover radius (critical_radii). It must stay fixed from step to step, or the split
@@ -283,7 +291,8 @@ def step(Q, v, m, R, alive, big, rc, mu, M_star, dt, log, n_log, t_now):
     for a in range(len(flagged)):
         roots[a] = _root(group, flagged[a])
     for root in np.unique(roots):                     # integrate each independent encounter group on its own
-        n_log = _encounter_drift(flagged[roots == root], Q, v, m, R, alive, big, rc, mu, M_star, dt, log, n_log, t_now)
+        n_log = _encounter_drift(flagged[roots == root], Q, v, m, R, alive, big, comp, rc, mu, M_star, dt, log, n_log,
+                                 t_now)
 
     p[:] = 0.0
     for i in range(n):

@@ -7,6 +7,7 @@ planetesimal tracers. Saves data/<tag>.npz (snapshots every 10 kyr and the colli
 
 --pebbles   embryos also accrete drifting pebbles (nbody/gas_effects.py)
 --migration embryos and giants migrate (Paardekooper et al. 2011 torques with the Kanagawa et al. 2018 gap factor)
+--alpha-turb midplane turbulence for gaps and torques near planets (default: alpha_acc = 1e-3, as in the first runs)
 --seed      random seed for the initial orbits (default 5); --tag names the output (default from the options)
 --resume    continue from data/<tag>_checkpoint.npz, written every 100 kyr
 
@@ -39,6 +40,7 @@ MIGRATION = 1.0 if "--migration" in sys.argv else 0.0
 SEED = int(option("--seed", 5))
 TAG = option("--tag", ("formation_pebbles" if PEBBLES else "formation") + ("_migration" if MIGRATION else "")
              + ("" if SEED == 5 else f"_seed{SEED}"))
+
 OUT_FILE = HERE / "data" / f"{TAG}.npz"
 CHECKPOINT = HERE / "data" / f"{TAG}_checkpoint.npz"
 T_END = 3e6
@@ -96,27 +98,30 @@ m = np.concatenate([m_emb, np.full(N_PLANETESIMALS, m_pl)])
 R = np.concatenate([(3 * m_emb / (4 * np.pi * RHO_EMBRYO)) ** (1 / 3), np.full(N_PLANETESIMALS, (3 * m_pl / (4 * np.pi * RHO_SOLID)) ** (1 / 3))])
 big = np.concatenate([np.ones(len(m_emb), bool), np.zeros(N_PLANETESIMALS, bool)])
 alive = np.ones(len(m), bool)
+comp = np.column_stack([m, np.zeros((len(m), 3))])   # mass by origin: seed, collisions, pebbles, gas
 Q, v = hy.from_heliocentric(x, u, m, M_star)
 
 dt = R_IN**1.5 / np.sqrt(M_star) / 25           # 25 steps per orbit at the inner edge (energy error ~1e-6)
 rc = hy.critical_radii(Q, v, m, alive, mu, dt)
-disk_params = np.array([disk.M0, disk.R1, disk.t_nu, M_star, disk.alpha, T_START, PEBBLES, MIGRATION])
+ALPHA_TURB = float(option("--alpha-turb", disk.alpha))
+disk_params = np.array([disk.M0, disk.R1, disk.t_nu, M_star, disk.alpha, T_START, PEBBLES, MIGRATION, ALPHA_TURB])
+print(f"alpha_acc = {disk.alpha:g} (disk evolution, gas inflow), alpha_turb = {ALPHA_TURB:g} (gaps, torques)")
 log, n_log = np.zeros((20000, 6)), 0
 out_every = 1e4
 steps_per_out = int(round(out_every / dt))
-snap = dict(t=[], x=[], u=[], m=[], R=[], alive=[], big=[])
+snap = dict(t=[], x=[], u=[], m=[], R=[], alive=[], big=[], comp=[])
 
 
 def record(t):
     xh, uh = hy.to_heliocentric(Q, v, m, M_star)
-    for key, value in zip(snap, (t, xh, uh, m, R, alive, big)):
+    for key, value in zip(snap, (t, xh, uh, m, R, alive, big, comp)):
         snap[key].append(np.copy(value))
 
 
 t, t0 = T_START, time.time()
 if "--resume" in sys.argv and CHECKPOINT.exists():
     c = np.load(CHECKPOINT)
-    Q, v, m, R, alive, big, rc = (np.array(c[k]) for k in ("Q", "v", "m", "R", "alive", "big", "rc"))
+    Q, v, m, R, alive, big, comp, rc = (np.array(c[k]) for k in ("Q", "v", "m", "R", "alive", "big", "comp", "rc"))
     n_log, t = int(c["n_log"]), float(c["t"])
     log[:n_log] = c["log"]
     snap = {k: list(c["snap_" + k]) for k in snap}
@@ -124,11 +129,11 @@ if "--resume" in sys.argv and CHECKPOINT.exists():
 else:
     record(t)
 while t < T_END - 1e-6:
-    n_log = evolve(Q, v, m, R, alive, big, rc, mu, M_star, dt, steps_per_out, t, disk_params, log, n_log, 200.0)
+    n_log = evolve(Q, v, m, R, alive, big, comp, rc, mu, M_star, dt, steps_per_out, t, disk_params, log, n_log, 200.0)
     t += steps_per_out * dt
     record(t)
     if len(snap["t"]) % 10 == 1:
-        np.savez(CHECKPOINT, Q=Q, v=v, m=m, R=R, alive=alive, big=big, rc=rc, n_log=n_log, t=t, log=log[:n_log],
+        np.savez(CHECKPOINT, Q=Q, v=v, m=m, R=R, alive=alive, big=big, comp=comp, rc=rc, n_log=n_log, t=t, log=log[:n_log],
                  **{"snap_" + k: np.array(vals) for k, vals in snap.items()})
         top = np.sort(m[alive & big])[::-1][:5] / M_EARTH
         print(f"t = {t / 1e6:.2f} Myr ({time.time() - t0:.0f} s): {alive.sum()} bodies, {n_log} mergers, "

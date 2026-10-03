@@ -7,12 +7,17 @@ from nbody.units import G, M_EARTH
 
 M_STAR = 0.816
 MU = G * M_STAR
-DISK = np.array([0.137, 258.0, 1.1e7, M_STAR, 1e-3, 1e6, 0.0, 0.0])   # (..., t0, pebbles_on, migration_on)
+DISK = np.array([0.137, 258.0, 1.1e7, M_STAR, 1e-3, 1e6, 0.0, 0.0, 1e-3])   # (..., t0, pebbles, migration, alpha_turb)
 
 
 def one_body(x, u, m, big):
     Q, v = hy.from_heliocentric(np.array([x], float), np.array([u], float), np.array([m]), M_STAR)
     return Q, v, np.array([m]), np.full(1, 1e-9), np.ones(1, bool), np.array([big])
+
+
+def seed(m):
+    """Composition array with all mass as seed solids."""
+    return np.column_stack([m, np.zeros((len(m), 3))])
 
 
 def gas_velocity(R, t):
@@ -44,7 +49,7 @@ def test_quadratic_drag_is_applied_exactly():
     Q, v, m, Rad, alive, big = one_body([R, 0, 0], [0, vg + extra, 0], 1e-15, False)
     sigma, H, omega, nu = disk_state(R, t, DISK)
     K = 3 * C_D * sigma / (np.sqrt(2 * np.pi) * H) / (8 * RHO_SOLID * PLANETESIMAL_SIZE)
-    apply_gas(Q, v, m, Rad, alive, big, t, dt, DISK, M_STAR)
+    apply_gas(Q, v, m, Rad, alive, big, seed(m), t, dt, DISK, M_STAR)
     u = hy.to_heliocentric(Q, v, m, M_STAR)[1][0]
     assert np.isclose(u[1] - vg, extra / (1 + K * extra * dt), rtol=1e-9)
 
@@ -56,7 +61,7 @@ def test_embryo_eccentricity_damps_on_the_tanaka_ward_time():
     dt = a0 ** 1.5 / np.sqrt(M_STAR) / 40
     rc = hy.critical_radii(Q, v, mm, alive, MU, dt)
     n = int(2e4 / dt)
-    evolve(Q, v, mm, Rad, alive, big, rc, MU, M_STAR, dt, n, 1e6, DISK, np.zeros((2, 6)), 0, 200.0)
+    evolve(Q, v, mm, Rad, alive, big, seed(mm), rc, MU, M_STAR, dt, n, 1e6, DISK, np.zeros((2, 6)), 0, 200.0)
     x, u = hy.to_heliocentric(Q, v, mm, M_STAR)
     r, E = np.linalg.norm(x[0]), 0.5 * u[0] @ u[0] - MU / np.linalg.norm(x[0])
     a = -MU / (2 * E)
@@ -72,9 +77,11 @@ def test_gas_accretion_switches_on_above_ten_earth_masses():
     vk = np.sqrt(MU / R)
     for m, should_grow in ((9.9 * M_EARTH, False), (30 * M_EARTH, True)):
         Q, v, mm, Rad, alive, big = one_body([R, 0, 0], [0, vk, 0], m, True)
-        apply_gas(Q, v, mm, Rad, alive, big, t, dt, DISK, M_STAR)
+        comp = seed(mm)
+        apply_gas(Q, v, mm, Rad, alive, big, comp, t, dt, DISK, M_STAR)
         assert (mm[0] > m) == should_grow
     assert np.isclose(mm[0] - m, gas_capture_rate(m, R, t, DISK) * dt, rtol=1e-12)
+    assert np.isclose(comp[0, 3], mm[0] - m, rtol=1e-12) and comp[0, 0] == m        # the gain is booked as gas
 
 
 def test_gas_capture_follows_tanigawa_tanaka():
@@ -88,7 +95,7 @@ def test_gas_capture_follows_tanigawa_tanaka():
     assert np.isclose(gas_capture_rate(m, R, t, DISK), m * 12.0**3 / 1e9, rtol=1e-12)
     m = M_JUPITER
     q, h = m / M_STAR, H / R
-    expected = 0.29 * h**-2 * q ** (4 / 3) * R**2 * omega * sigma / (1 + 0.034 * h**-5 * q**2 / DISK[4])
+    expected = 0.29 * h**-2 * q ** (4 / 3) * R**2 * omega * sigma / (1 + 0.034 * h**-5 * q**2 / DISK[8])
     assert np.isclose(gas_capture_rate(m, R, t, DISK), expected, rtol=1e-12)
     assert gas_capture_rate(3 * M_JUPITER, R, t, DISK) < gas_capture_rate(M_JUPITER, R, t, DISK)
 
@@ -102,7 +109,7 @@ def test_giants_share_the_disk_inflow_outside_in():
     m = np.array([0.3 * M_JUPITER, 0.3 * M_JUPITER])
     Q, v = hy.from_heliocentric(x, u, m, M_STAR)
     m0, R = m.copy(), np.full(2, 1e-4)
-    accrete_gas(Q, v, m, R, np.ones(2, bool), np.ones(2, bool), t, dt, DISK, np.zeros(3))
+    accrete_gas(Q, v, m, R, np.ones(2, bool), np.ones(2, bool), seed(m), t, dt, DISK, np.zeros(3))
     inflow = disk_inflow(t, DISK)
     outer = min(gas_capture_rate(m0[1], 10.0, t, DISK), inflow)
     inner = min(gas_capture_rate(m0[0], 5.0, t, DISK), inflow - outer)
@@ -148,7 +155,9 @@ def test_outer_embryos_take_their_share_and_isolated_ones_block_the_flux():
         m = np.array([3 * M_EARTH, m_outer])
         Q, v = hy.from_heliocentric(x, u, m, M_STAR)
         m0 = m.copy()
-        accrete_pebbles(Q, v, m, np.ones(2, bool), np.ones(2, bool), t, dt, PEBBLE_DISK, np.zeros(3))
+        comp = seed(m)
+        accrete_pebbles(Q, v, m, np.ones(2, bool), np.ones(2, bool), comp, t, dt, PEBBLE_DISK, np.zeros(3))
+        assert np.allclose(comp[:, 2], m - m0, rtol=0, atol=4 * np.finfo(float).eps * m.max())   # booked as pebbles
         outer_take = pebble_capture_rate(m0[1], 12.0, t, PEBBLE_DISK, flux) * dt
         if blocked:
             assert m[1] == m0[1] and m[0] == m0[0]                     # isolated outer embryo: nothing gets through
@@ -190,7 +199,7 @@ def test_effective_gamma_has_isothermal_and_adiabatic_limits():
 def test_saturated_corotation_leaves_only_the_lindblad_torque():
     # Nearly inviscid gas (alpha -> 0) cannot refresh the horseshoe region: the corotation torque saturates to zero.
     inviscid = DISK.copy()
-    inviscid[4] = 1e-14
+    inviscid[8] = 1e-14
     total, lindblad, corotation = type1_torque(5 * M_EARTH, 5.0, 1e6, inviscid, 1.0, 0.5, 1e-20)
     assert abs(corotation) < 1e-6 * abs(lindblad) and np.isclose(total, lindblad, rtol=1e-6)
 
@@ -211,7 +220,7 @@ def test_gap_opening_reduces_the_torque():
     from nbody.units import M_JUPITER
     m, R, t = M_JUPITER, 5.0, 1.5e6
     sigma, H, omega, nu = disk_state(R, t, MIG_DISK)
-    K = (H / R) ** -5 * (m / M_STAR) ** 2 / DISK[4]
+    K = (H / R) ** -5 * (m / M_STAR) ** 2 / DISK[8]
     T_d = 1 + t / DISK[2]
     raw = type1_torque(m, R, t, MIG_DISK, 1 + R / (DISK[1] * T_d), 0.5, thermal_diffusivity(R, t, MIG_DISK))[0]
     assert K > 1000 and np.isclose(migration_torque(m, R, t, MIG_DISK), raw / (1 + 0.04 * K), rtol=1e-12)
@@ -224,8 +233,17 @@ def test_planet_migrates_at_the_torque_rate():
     dt = a0 ** 1.5 / np.sqrt(M_STAR) / 40
     rc = hy.critical_radii(Q, v, mm, alive, MU, dt)
     n = int(2e4 / dt)
-    evolve(Q, v, mm, Rad, alive, big, rc, MU, M_STAR, dt, n, 1e6, MIG_DISK, np.zeros((2, 6)), 0, 200.0)
+    evolve(Q, v, mm, Rad, alive, big, seed(mm), rc, MU, M_STAR, dt, n, 1e6, MIG_DISK, np.zeros((2, 6)), 0, 200.0)
     x, u = hy.to_heliocentric(Q, v, mm, M_STAR)
     a = -MU / (2 * (0.5 * u[0] @ u[0] - MU / np.linalg.norm(x[0])))
     rate = 2 * a0 * migration_torque(m, a0, 1e6 + 1e4, MIG_DISK) / (m * np.sqrt(G * M_STAR * a0))
     assert np.isclose((a - a0) / (n * dt), rate, rtol=0.05)
+
+
+def test_type2_migration_slows_in_proportion_to_midplane_turbulence():
+    # Deep in a gap the torque ~ Gamma_I / (0.04 K) with K ~ 1 / alpha_turb: ten times less turbulence, ten times slower.
+    from nbody.units import M_JUPITER
+    quiet = MIG_DISK.copy()
+    quiet[8] = 1e-4
+    ratio = migration_torque(M_JUPITER, 5.0, 1.5e6, MIG_DISK) / migration_torque(M_JUPITER, 5.0, 1.5e6, quiet)
+    assert 9 < ratio < 11

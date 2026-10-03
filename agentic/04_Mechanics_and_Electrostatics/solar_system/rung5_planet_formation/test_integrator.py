@@ -60,11 +60,13 @@ def run(x, u, m, dt, n_steps, R=None, big=None):
     big = np.ones(len(m), bool) if big is None else big
     Q, v = hy.from_heliocentric(x, u, m, 1.0)
     m, alive, log, n_log = m.copy(), np.ones(len(m), bool), np.zeros((10, 6)), 0
+    comp = np.column_stack([m, np.zeros((len(m), 3))])          # everything starts as seed solids
     rc = hy.critical_radii(Q, v, m, alive, MU, dt)
     E0, worst = hy.total_energy(Q, v, m, alive, big, MU, 1.0), 0.0
     for k in range(n_steps):
-        n_log = hy.step(Q, v, m, R, alive, big, rc, MU, 1.0, dt, log, n_log, k * dt)
+        n_log = hy.step(Q, v, m, R, alive, big, comp, rc, MU, 1.0, dt, log, n_log, k * dt)
         worst = max(worst, abs((hy.total_energy(Q, v, m, alive, big, MU, 1.0) + log[:n_log, 5].sum()) / E0 - 1))
+    run.comp = comp                                            # for the composition checks
     return Q, v, m, alive, worst, log, n_log
 
 
@@ -141,6 +143,9 @@ def test_collision_merges_and_closes_the_energy_budget():
     Q, v, mm, alive, worst, log, n_log = run(x, u, m, 2 * np.pi * np.sqrt(125 / MU) / 40, 40, R=np.full(2, 1e-3))
     assert n_log == 1 and alive.sum() == 1
     assert np.isclose(mm[alive].sum(), m.sum(), rtol=1e-15)
+    assert np.allclose(run.comp.sum(axis=1), mm, rtol=1e-14)               # composition columns add up to the mass
+    survivor = np.flatnonzero(alive)[0]
+    assert np.isclose(run.comp[survivor, 1], m.min(), rtol=1e-14)           # the smaller body arrived as collisions
     # E_now + energy lost in the merger = E_initial. The merger bookkeeping is exact (see the merge test); what remains
     # is ordinary integration error during the approach (measured 1.3e-10).
     assert worst < 1e-8
@@ -154,8 +159,10 @@ def test_merge_conserves_mass_momentum_and_volume():
     Q, v = np.array([[1.0, 0, 0], [1.1, 0.1, 0]]), np.array([[0, 6.0, 0], [0.5, 5.0, 0.1]])
     m, R, alive, big = np.array([2.0, 1.0]), np.array([0.3, 0.2]), np.ones(2, bool), np.array([True, False])
     p0, cm0 = m @ v, m @ Q
-    hy.merge(0, 1, Q, v, m, R, alive, big)
+    comp = np.array([[1.5, 0.2, 0.2, 0.1], [0.4, 0.3, 0.2, 0.1]])          # rows sum to the masses 2 and 1
+    hy.merge(0, 1, Q, v, m, R, alive, big, comp)
     assert m[0] == 3.0 and not alive[1] and big[0]
+    assert np.allclose(comp[0], [1.5, 0.2 + 0.4 + 0.3, 0.4, 0.2]) and np.all(comp[1] == 0)   # gas stays gas
     assert np.allclose(m[0] * v[0], p0, rtol=1e-15) and np.allclose(m[0] * Q[0], cm0, rtol=1e-15)
     assert np.isclose(R[0] ** 3, 0.3**3 + 0.2**3, rtol=1e-14)
 

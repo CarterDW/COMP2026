@@ -129,13 +129,32 @@ contraction, deuterium, hydrogen) and blackbody color from Teff.
   - During accretion, the split of the surface light into contraction and deuterium is
     bookkeeping only; after accretion ends it is exact.
 
-### Rung 5: Disk -> Planetary Embryos, with Mergers
-Seed planetesimals and embryos from Sigma(r). Compare against the minimum-mass solar
-nebula, Sigma ~ r^(-3/2). Add a decaying analytic gas disk for drag, perfect-merging
-collisions, and a simple rule for gas giants: a core above ~10 Earth masses accretes gas.
-- **Check:** A head-on two-body merger conserves momentum exactly.
-- **Check:** The energy budget closes once collision losses are counted.
-- **Check:** Embryo masses approach the theoretical isolation mass.
+### Rung 5: Disk -> Planetary Embryos, with Mergers (giant-planet zone, 4-30 AU)
+The Rung 4 disk's mass and angular momentum define a viscous (Lynden-Bell & Pringle) disk at 1 Myr, about 0.85x the
+minimum-mass solar nebula at 5 AU. Embryos and planetesimals are evolved for 2 Myr with a hybrid Wisdom-Holman
+integrator (exact Kepler drifts plus encounter switching) and perfect mergers. The gas physics is:
+- drag on planetesimals and tidal damping of embryos;
+- disk dispersal;
+- shared, gap-limited gas accretion (Tanigawa & Tanaka 2016);
+- pebble accretion (Lambrechts & Johansen 2014);
+- type I/II migration (Paardekooper et al. 2011; Kanagawa et al. 2018);
+- a two-alpha disk: alpha_acc = 1e-3, alpha_turb = 1e-4.
+
+Composition is tracked as seed solids, collisions, pebbles and gas.
+- **Check:** The Kepler solver is exact to ~1e-12 for e up to 0.9999. The integrator is second order and
+  reversible, matches a leapfrog reference, and conserves energy through close encounters and mergers.
+- **Check:** The viscous disk solves its diffusion equation and conserves angular momentum. Drag, damping, gas
+  accretion, pebble flux and migration torques match their published formulas and limits.
+- **Found:**
+  - Classic planetesimal growth stalls below 10 Mearth: no giants (the core-growth timescale problem).
+  - Pebbles make giants. Without migration they are too massive and too far out. With alpha_acc = alpha_turb =
+    1e-3, migration drags every planet into the inner disk.
+  - With the two-alpha disk, one 2.5 MJ giant with a ~16 Mearth core survives at 6.1 AU, having migrated in from
+    26 AU. All other cores are lost to type I migration.
+- **Missing physics noted:**
+  - magnetic braking and outflows, which would give a smaller disk;
+  - migration traps from a realistic disk thermal structure.
+- **Handoff:** `solar_system/rung5_planet_formation/handoff.npz` (the surviving giant's orbit and mass).
 
 ### Rung 6: Late-Stage Assembly (~100 Myr)
 ~100-200 embryos between 0.5 and 4 AU, with Jupiter and Saturn present.

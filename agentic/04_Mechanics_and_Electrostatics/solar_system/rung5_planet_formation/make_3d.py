@@ -26,6 +26,8 @@ PLOTS = HERE / "plots" / TAG
 PLOTS.mkdir(parents=True, exist_ok=True)
 d = np.load(HERE / "data" / f"{TAG}.npz")
 t, x, u, mass, alive, big = d["t"], d["x"], d["u"], d["m"], d["alive"], d["big"]
+# A gas giant: mostly gas, if the run recorded composition; otherwise above 50 Mearth (only gas accretion gets there).
+is_giant = (d["comp"][:, :, 3] > 0.5 * mass) if "comp" in d.files else (mass >= 50 * M_EARTH)
 mu = G * float(d["M_star"])
 disk = d["disk_params"]
 Z_STRETCH = 10.0                        # inclinations are ~0.5 deg: stretch z so the vertical structure shows
@@ -36,7 +38,7 @@ EMBRYO_COLOR, PLANETESIMAL_COLOR = BLUE, "#9a9a9a"
 GIANT_COLORS = [ORANGE, "#e87ba4", YELLOW, "#1baf7a"]
 
 # Name the giants once, in the order they crossed GIANT, so labels and colors follow bodies, not ranks.
-became = {i: np.argmax(mass[:, i] >= GIANT) for i in np.flatnonzero((mass >= GIANT).any(axis=0))}
+became = {i: np.argmax(is_giant[:, i]) for i in np.flatnonzero(is_giant.any(axis=0))}
 GIANT_NAMES = {i: (chr(ord("A") + n), GIANT_COLORS[n % len(GIANT_COLORS)])
                for n, i in enumerate(sorted(became, key=became.get))}
 
@@ -99,7 +101,7 @@ def draw(frame):
     pl = live & ~big[k]
     ax.scatter(pos[pl, 0], pos[pl, 1], Z_STRETCH * pos[pl, 2], s=3, color=PLANETESIMAL_COLOR, alpha=0.7, depthshade=False)
     for i, curve in orbits_of(k).items():
-        giant = mass[k, i] >= GIANT
+        giant = is_giant[k, i]
         name, color = GIANT_NAMES[i] if giant else ("", EMBRYO_COLOR)
         ax.plot(curve[:, 0], curve[:, 1], Z_STRETCH * curve[:, 2], color=color, lw=1.0 if giant else 0.7, alpha=0.7)
         size = 12 * (mass[k, i] / M_EARTH) ** (2 / 3)
@@ -109,8 +111,8 @@ def draw(frame):
             ax.text(*pos[i, :2], Z_STRETCH * pos[i, 2] + 3.5, f"giant {name}: {mass[k, i] / M_EARTH / 317.8:.1f} MJ",
                     color=color, fontsize=9, ha="center", fontweight="bold")
 
-    n_giants = int(np.sum(live & big[k] & (mass[k] >= GIANT)))
-    n_embryos = int(np.sum(live & big[k] & (mass[k] < GIANT)))
+    n_giants = int(np.sum(live & big[k] & is_giant[k]))
+    n_embryos = int(np.sum(live & big[k] & ~is_giant[k]))
     fig.texts.clear()
     fig.text(0.03, 0.95, f"disk age {t[k] / 1e6:.2f} Myr", color="white", fontsize=12)
     fig.text(0.03, 0.91, f"gas left: {100 * gas_left:.0f}%   giants {n_giants}   embryos {n_embryos}   "
