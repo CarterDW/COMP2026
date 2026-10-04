@@ -368,13 +368,38 @@ def to_heliocentric(Q, v, m, M_star):
 
 PERI_THETA = 0.42     # max angle (rad) a body may sweep near pericenter per (sub)step: 2 pi / 15, what a circular
                       # orbit at the inner edge gets with dt = P_in / 15, so near-circular bodies never trigger it
-PERI_ZONE = 5.0       # substep while a body is within this many pericenter distances (3 left ~1% errors)
+PERI_ZONE = 8.0       # substep while a body is within this many pericenter distances (5 left 2.4e-3 errors in a at
+                      # q = 0.093 AU, 8 gives 7.5e-4; 3 left ~1% errors at q = 0.2)
+
+
+@njit
+def time_to_radius_inbound(r, vr, v2, e, mu, r_target):
+    """Time until a body on the Kepler orbit (radius r, radial velocity vr, speed^2 v2, eccentricity e) next reaches
+    r_target <= r while falling in (r_target = q gives the time to pericenter); inf if it never does. From Kepler's
+    equation: a straight-line estimate from vr misses how fast an eccentric body falls in."""
+    energy = 0.5 * v2 - mu / r
+    if energy < 0:                                              # ellipse: eccentric anomaly E, mean anomaly E - e sin E
+        a = -mu / (2 * energy)
+        E = np.arccos(min(1.0, max(-1.0, (1 - r / a) / e))) if e > 0 else 0.0
+        if vr < 0:
+            E = 2 * np.pi - E
+        E_in = 2 * np.pi - (np.arccos(min(1.0, max(-1.0, (1 - r_target / a) / e))) if e > 0 else 0.0)
+        dM = (E_in - e * np.sin(E_in)) - (E - e * np.sin(E))
+        return (dM % (2 * np.pi)) / np.sqrt(mu / a**3)
+    if vr >= 0:
+        return np.inf
+    if energy == 0 or e <= 1:                                   # parabolic (measure zero): treat as arriving now
+        return 0.0
+    a = mu / (2 * energy)                                       # hyperbola: mean anomaly e sinh H - H
+    H = np.arccosh(max(1.0, (1 + r / a) / e))
+    H_t = np.arccosh(max(1.0, (1 + r_target / a) / e))
+    return ((e * np.sinh(H) - H) - (e * np.sinh(H_t) - H_t)) / np.sqrt(mu / a**3)
 
 
 @njit
 def pericenter_substeps(Q, v, alive, mu, dt):
     """For each body, how many equal substeps its drift needs so that, if it is near pericenter (within PERI_ZONE
-    pericenter distances, or reaching pericenter during the step), it sweeps at most PERI_THETA radians per substep
+    pericenter distances, or falling into that zone during the step), it sweeps at most PERI_THETA radians per substep
     at its pericenter speed; 1 otherwise. Wisdom-Holman cannot resolve a pericenter passage much faster than one step
     (Rauch & Holman 1999); here it shows up through the star's reflex (jump) term, so only that body's jumps and
     Kepler drift are split (step_resolving_pericenters)."""
@@ -390,8 +415,8 @@ def pericenter_substeps(Q, v, alive, mu, dt):
         h2 = (x1 * u2 - x2 * u1) ** 2 + (x2 * u0 - x0 * u2) ** 2 + (x0 * u1 - x1 * u0) ** 2
         e = np.sqrt(max(0.0, 1 + (v2 - 2 * mu / r) * h2 / mu**2))
         q = h2 / (mu * (1 + e))                                 # pericenter distance
-        if r > PERI_ZONE * q and (r - q) > -vr * dt:           # far from pericenter, and not reaching it this step
-            continue
+        if r > PERI_ZONE * q and time_to_radius_inbound(r, vr, v2, e, mu, PERI_ZONE * q) > dt:   # outside the zone
+            continue                                                                         # and not entering it
         v_p = np.sqrt(mu * (1 + e) / q)
         n_sub[i] = min(1000, max(1, int(np.ceil(v_p * dt / (q * PERI_THETA)))))
     return n_sub

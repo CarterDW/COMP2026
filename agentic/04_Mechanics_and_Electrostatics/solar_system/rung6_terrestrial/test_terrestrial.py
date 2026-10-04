@@ -67,11 +67,34 @@ def test_without_fast_pericenters_the_step_is_unchanged():
     assert np.array_equal(runs[0], runs[1])
 
 
-@pytest.mark.parametrize("a, q", [(1.5, 0.2), (2.5, 0.3)])
-def test_substeps_match_a_fine_timestep_reference(a, q):
+@pytest.mark.parametrize("a, e", [(1.136, 0.918), (2.5, 0.88), (1.0, 0.05), (-3.0, 1.4)])
+def test_time_to_radius_inbound_matches_kepler_propagation(a, e):
+    # From pericenter, propagate back by tau_t to reach r_target on the way in, then by tau0 more: from there the
+    # body must take tau0 to reach r_target (and tau0 + tau_t to reach pericenter). a < 0 is a hyperbola. The
+    # e = 0.918 orbit is the one a seed-6 planetesimal had when its fall into pericenter went unresolved.
+    # Tolerance 1e-7 relative: the Kepler solver's convergence.
+    from nbody.kepler import kepler_drift
+    q = a * (1 - e)
+    x, u = np.array([q, 0, 0.0]), np.array([0, np.sqrt(MU * (1 + e) / q), 0.0])
+    T = 2 * np.pi * np.sqrt(abs(a) ** 3 / MU)
+    for tau_t, tau0 in [(0.0, 0.3 * T), (0.02 * T, 0.1 * T), (0.05 * T, 0.001 * T)]:
+        x_t, u_t = kepler_drift(x, u, MU, -tau_t)
+        X, U = kepler_drift(x_t, u_t, MU, -tau0)
+        r = np.linalg.norm(X)
+        t = hy.time_to_radius_inbound(r, X @ U / r, U @ U, e, MU, max(q, np.linalg.norm(x_t)))
+        assert t == pytest.approx(tau0, rel=1e-7, abs=1e-12 * T)
+    X, U = kepler_drift(x, u, MU, 0.01 * T)                       # outbound: an ellipse comes back, a hyperbola never
+    r = np.linalg.norm(X)
+    expected = 0.99 * T if a > 0 else np.inf
+    assert hy.time_to_radius_inbound(r, X @ U / r, U @ U, e, MU, q) == pytest.approx(expected, rel=1e-7)
+
+
+@pytest.mark.parametrize("a, q, refine", [(1.5, 0.2, 16), (2.5, 0.3, 16), (1.136, 0.093, 64)])
+def test_substeps_match_a_fine_timestep_reference(a, q, refine):
     # An eccentric embryo whose pericenter passage is much faster than one step, perturbed by the 2.5 MJ giant.
-    # Measured: plain steps drift by ~1-3% in a; with substeps the history matches dt/16 to ~1e-3.
-    reference = embryo_a_history(plain, 16, a, q)
+    # Measured: plain steps drift by ~1-3% in a; with substeps the history matches the reference to ~1e-3.
+    # The reference must itself resolve pericenter: dt/16 sweeps 0.74 rad per step at q = 0.093, so that case uses dt/64.
+    reference = embryo_a_history(plain, refine, a, q)
     unresolved = embryo_a_history(plain, 1, a, q)
     resolved = embryo_a_history(resolving, 1, a, q)
     error = lambda hist: np.abs(hist - reference).max() / a
