@@ -100,3 +100,38 @@ def test_substeps_match_a_fine_timestep_reference(a, q, refine):
     error = lambda hist: np.abs(hist - reference).max() / a
     assert error(resolved) < 2e-3
     assert error(unresolved) > 5 * error(resolved)
+
+
+def test_plunging_planetesimal_crossing_an_embryo_keeps_its_orbit():
+    # Seed 4's failure: a planetesimal (a = 2.24 AU, q = 0.062 AU) plunging past the innermost embryo (0.62 AU) is
+    # flagged as an encounter on most passages. Unless the encounter group carries its own jump term, its fall goes
+    # unresolved there and its energy random-walks (measured before the fix: 30% in a over 200 yr, system dE/E 1.7e-5).
+    # With it: 6e-3 in a (0.6% of the planetesimal's own energy over ~50 passages) and dE/E 3e-7.
+    a, q = 2.24, 0.062
+    e = 1 - q / a
+    vq = np.sqrt(MU * (1 + e) / q)
+    x = np.array([[q, 0, 0], [0.62, 0, 0], [6.1, 0, 0]])
+    u = np.array([[0, vq, 0], [0, np.sqrt(MU / 0.62), 0], [0, np.sqrt(MU / 6.1), 0]])
+    m = np.array([0.0119 * M_EARTH, 0.4 * M_EARTH, 2.5 * M_JUPITER])
+
+    def history(stepper, refine, years=200.0):
+        dt = DT / refine
+        Q, v = hy.from_heliocentric(x, u, m, M_STAR)
+        alive, big = np.ones(3, bool), np.array([False, True, True])
+        R, comp, log = np.full(3, 1e-9), np.column_stack([m, np.zeros((3, 3))]), np.zeros((4, 6))
+        rc = hy.critical_radii(Q, v, m, alive, MU, DT)
+        acc = hy.far_accelerations(Q, m, alive, big, rc)
+        E0 = hy.total_energy(Q, v, m, alive, big, MU, M_STAR)
+        out, dE = [], 0.0
+        for k in range(int(years / DT) * refine):
+            stepper(Q, v, m, R, alive, big, comp, rc, MU, M_STAR, dt, log, 0, 0.0, acc)
+            if k % (23 * refine) == 0:
+                xh, uh = hy.to_heliocentric(Q, v, m, M_STAR)
+                out.append(orbital_elements(xh[:1], uh[:1], MU)[0][0])
+                dE = max(dE, abs(hy.total_energy(Q, v, m, alive, big, MU, M_STAR) / E0 - 1))
+        return np.array(out), dE
+
+    reference, _ = history(plain, 64)
+    resolved, dE = history(resolving, 1)
+    assert np.abs(resolved - reference).max() / a < 1.5e-2
+    assert dE < 1e-6

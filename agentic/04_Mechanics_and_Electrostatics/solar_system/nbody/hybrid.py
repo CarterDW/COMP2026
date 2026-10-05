@@ -95,12 +95,13 @@ def _kepler_all(Q, v, alive, mu, dt):
 
 
 @njit
-def _close_rhs(y, members, m, alive, big, rc, mu):
-    """d/dt (Q, v) for the encounter set: the star plus the close part of their mutual forces."""
+def _close_rhs(y, members, m, alive, big, rc, mu, w):
+    """d/dt (Q, v) for the encounter set: the star plus the close part of their mutual forces. w: the jump velocity
+    p / M_star when the set carries its own jumps (zero otherwise)."""
     k = len(members)
     dy = np.zeros((k, 6))
     for a in range(k):
-        dy[a, 0:3] = y[a, 3:6]
+        dy[a, 0:3] = y[a, 3:6] + w
         r = np.sqrt(y[a, 0] ** 2 + y[a, 1] ** 2 + y[a, 2] ** 2)
         dy[a, 3:6] = -mu * y[a, 0:3] / r**3
         i = members[a]
@@ -119,23 +120,25 @@ def _close_rhs(y, members, m, alive, big, rc, mu):
 _A = np.array([[0, 0, 0, 0, 0, 0], [1 / 5, 0, 0, 0, 0, 0], [3 / 40, 9 / 40, 0, 0, 0, 0],
                [44 / 45, -56 / 15, 32 / 9, 0, 0, 0], [19372 / 6561, -25360 / 2187, 64448 / 6561, -212 / 729, 0, 0],
                [9017 / 3168, -355 / 33, 46732 / 5247, 49 / 176, -5103 / 18656, 0]])
+_C = np.array([0, 1 / 5, 3 / 10, 4 / 5, 8 / 9, 1, 1])
 _B5 = np.array([35 / 384, 0, 500 / 1113, 125 / 192, -2187 / 6784, 11 / 84, 0])
 _B4 = np.array([5179 / 57600, 0, 7571 / 16695, 393 / 640, -92097 / 339200, 187 / 2100, 1 / 40])
 
 
 @njit
-def _dopri_step(y, h, members, m, alive, big, rc, mu):
+def _dopri_step(y, h, members, m, alive, big, rc, mu, t, w0, dw):
+    """One Dormand-Prince step from time t; the jump velocity is w0 + dw t (zero when the set has no own jumps)."""
     k = np.zeros((7, y.shape[0], 6))
-    k[0] = _close_rhs(y, members, m, alive, big, rc, mu)
+    k[0] = _close_rhs(y, members, m, alive, big, rc, mu, w0 + dw * t)
     for s in range(1, 6):
         ys = y.copy()
         for q in range(s):
             ys += h * _A[s, q] * k[q]
-        k[s] = _close_rhs(ys, members, m, alive, big, rc, mu)
+        k[s] = _close_rhs(ys, members, m, alive, big, rc, mu, w0 + dw * (t + _C[s] * h))
     y5 = y.copy()
     for q in range(6):
         y5 += h * _B5[q] * k[q]
-    k[6] = _close_rhs(y5, members, m, alive, big, rc, mu)
+    k[6] = _close_rhs(y5, members, m, alive, big, rc, mu, w0 + dw * (t + h))
     err = np.zeros(y.shape)
     for q in range(7):
         err += h * (_B5[q] - _B4[q]) * k[q]
@@ -198,8 +201,9 @@ def total_energy(Q, v, m, alive, big, mu, M_star):
 
 
 @njit
-def _encounter_drift(members, Q, v, m, R, alive, big, comp, rc, mu, M_star, dt, log, n_log, t_now):
-    """Integrate the encounter set over dt; merge bodies that touch. Returns the updated event count."""
+def _encounter_drift(members, Q, v, m, R, alive, big, comp, rc, mu, M_star, dt, log, n_log, t_now, w0, dw):
+    """Integrate the encounter set over dt; merge bodies that touch. Returns the updated event count.
+    w0 + dw t: the jump velocity, when the set carries its own jumps (see _step); zero otherwise."""
     k = len(members)
     y = np.zeros((k, 6))
     for a in range(k):
@@ -208,7 +212,7 @@ def _encounter_drift(members, Q, v, m, R, alive, big, comp, rc, mu, M_star, dt, 
     t, h = 0.0, dt / 10
     while t < dt:
         h = min(h, dt - t)
-        y_new, err = _dopri_step(y, h, members, m, alive, big, rc, mu)
+        y_new, err = _dopri_step(y, h, members, m, alive, big, rc, mu, t, w0, dw)
         if err > 1.0:
             h *= max(0.2, 0.9 * err ** -0.2)
             continue
@@ -336,9 +340,18 @@ def _step(Q, v, m, R, alive, big, comp, rc, mu, M_star, dt, log, n_log, t_now, n
     roots = np.empty(len(flagged), dtype=np.int64)
     for a in range(len(flagged)):
         roots[a] = _root(group, flagged[a])
+    zero = np.zeros(3)
     for root in np.unique(roots):                     # integrate each independent encounter group on its own
-        n_log = _encounter_drift(flagged[roots == root], Q, v, m, R, alive, big, comp, rc, mu, M_star, dt, log, n_log,
-                                 t_now)
+        members = flagged[roots == root]
+        if (n_sub[members] > 1).any():                # a fast pericenter passage: the group carries its own jumps,
+            for i in members:                         # as a velocity p(t) / M_star inside the Runge-Kutta drift
+                Q[i] -= 0.5 * dt * p0 / M_star
+                own_jumps[i] = True
+            n_log = _encounter_drift(members, Q, v, m, R, alive, big, comp, rc, mu, M_star, dt, log, n_log, t_now,
+                                     p0 / M_star, (p1 - p0) / (M_star * dt))
+        else:
+            n_log = _encounter_drift(members, Q, v, m, R, alive, big, comp, rc, mu, M_star, dt, log, n_log, t_now,
+                                     zero, zero)
 
     p[:] = 0.0
     for i in range(n):
