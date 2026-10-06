@@ -238,7 +238,7 @@ Model (`nbody/pebble_disk.py`): 1D radial transport of rock and ice pebbles on t
   - **No planetesimals form inside 2.7 AU in any run, at any resolution.** Even with sticky (10 m/s) silicates the
     pebble-to-gas ratio there is 0.004 at 4 kyr, falling to 2e-4 by 1 Myr, against a threshold of 0.023. With
     1 m/s silicates the dry pebbles are too small for the streaming instability (St = 1e-3).
-  - Of the pebble mass through 4 AU (369 Mearth), about 76% sublimates, 24% reaches the star and 0.02-0.7% forms
+  - Of the pebble mass through 4 AU (369 Mearth, plus 6 Mearth of local dust), about 77% sublimates, 24% reaches the star and 0.02-0.7% forms
     planetesimals.
   - Planetesimals form only at or outside the snow line, 0.05-2.4 Mearth in total, all within the first 10-20 kyr.
     They form while the local dust and the early pebble surge are near threshold, and where the dry-rock jam
