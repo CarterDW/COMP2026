@@ -156,11 +156,59 @@ Composition is tracked as seed solids, collisions, pebbles and gas.
   - migration traps from a realistic disk thermal structure.
 - **Handoff:** `solar_system/rung5_planet_formation/handoff.npz` (the surviving giant's orbit and mass).
 
-### Rung 6: Late-Stage Assembly (~100 Myr)
-~100-200 embryos between 0.5 and 4 AU, with Jupiter and Saturn present.
-- **Check:** Over several realizations, compare the distributions of planet count,
-  planet masses, and angular momentum deficit (AMD) with Chambers (2001) and with the
-  real solar system. The outcomes are chaotic, so only the statistics are meaningful.
+### Rung 6: Late-Stage Assembly (20 Myr, terrestrial zone, 0.7-4 AU)
+Gas-free assembly of the inner disk with the Rung 5 giant (2.5 MJ at 6.1 AU) and perfect mergers. The solids come
+from the same disk at 1 Myr: rock inside the 2.7 AU snow line, rock and ice outside, 4.8 Mearth between 0.7 and
+4 AU. Half is in 47 embryos at half their isolation mass, 10 mutual Hill radii apart. The other half is in 200
+planetesimals (0.012 Mearth each, following Sigma_s) that feel the embryos and the giant but not each other, so
+their gravity damps the embryos' eccentricities (dynamical friction, O'Brien et al. 2006). Bodies inside 0.2 AU or
+beyond 100 AU are removed, with their mass and energy tallied. There are 8 seeds, differing only in the random
+orbital phases and the small initial eccentricities and inclinations; an earlier set of 8 used embryos only.
+- **Integrator additions:**
+  - **Per-body pericenter substeps.** A body falling into the zone within 8 pericenter distances (timed with
+    Kepler's equation) drifts in substeps of at most 0.42 rad of pericenter motion. Only its Kepler drift and its
+    share of the star's reflex (jump) term are split.
+  - **Encounter groups.** An encounter group containing such a body carries the jump term inside its Runge-Kutta
+    drift.
+  - **Force cache.** Each step's closing far-force kick is reused as the next step's opening kick (same result,
+    half the force evaluations).
+- **Check:**
+  - Pericenter cases (q = 0.3, 0.2, 0.093 AU, and a q = 0.062 AU planetesimal crossing a 0.4 Mearth embryo) match
+    a dt/16 or dt/64 reference to 4e-4 to 6e-3 in a; plain steps are off by 3% to 3000%.
+  - Without fast pericenters the step reproduces the plain hybrid step bit for bit.
+  - A killed and resumed run reproduces an uninterrupted one exactly.
+  - Resonance check: test particles respond strongly at the giant's 2:1 and 5:3 resonances and weakly at the 3:1,
+    as expected for a nearly circular giant.
+- **Found** (the outcomes are chaotic, so only the statistics are meaningful):
+
+  | | planets (> 0.05 Mearth) | largest | AMD (median) | S_c | mass inside 1.5 AU |
+  |---|---|---|---|---|---|
+  | Solar System | 4 | 1.00 Mearth at 1.0 AU | 0.0016 | 90 | 1.98 Mearth |
+  | embryos only | 4-11 | 1.1-2.0 Mearth at 1.8-3.8 AU | 0.023-0.084 (0.064) | 34-102 | |
+  | 200 planetesimals | 2-6 | 0.55-1.5 Mearth at 1.7-2.8 AU | 0.0034-0.042 (0.016) | 65-167 | 0.08-0.40 Mearth |
+
+  - Dynamical friction works. With the planetesimal swarm the median AMD drops about 4x and the planets are fewer.
+    The best seeds (AMD 0.003 and 0.006) are within a factor of 2-4 of the Solar System.
+  - Every run forms its largest planets at 1.7-2.8 AU and leaves only Mars-sized or smaller bodies inside 1.5 AU.
+    This traces back to the initial solids, not to the dynamics: the disk has only 0.63 Mearth of solids inside
+    1.5 AU, about half the minimum-mass solar nebula, against 1.98 Mearth in the planets there today.
+  - The giant ejects 1.2-2.0 Mearth per run (about a third of the solids); about 1 Mearth is still in
+    planetesimals at 20 Myr, so accretion is not finished (Earth took ~50-100 Myr).
+  - Energy budgets end at 0.7-2e-4 in six runs.
+- **Caveat (code versions):** the 8 planetesimal runs were resumed twice on corrected code (see each log's
+  "stopped after checkpoint" lines; analyze_terrestrial.py lists the switch times). Two events from the earlier
+  code remain in the budgets: seed 6 jumps to 5.9e-3 at 6.5 Myr and seed 4 to 1.2e-3 at 11.6 Myr. Each is
+  confined to one 0.012 Mearth planetesimal plunging to q ~ 0.06-0.09 AU, whose orbit random-walked before it was
+  removed. The rest of each system was unaffected (the energy recomputed from the snapshots shows no jump).
+  - Switch 1 (Kepler-timed pericenter trigger) happened at 7.1-9.6 Myr.
+  - Switch 2 (encounter groups carry their own jump term) happened at 10.3-14.7 Myr.
+- **Missing physics noted:**
+  - pebble drift into the inner disk and planetesimal formation there (e.g. rings near the silicate sublimation
+    and snow lines). This is the likely way to get enough rock inside 1.5 AU;
+  - fragmentation in collisions (perfect mergers overestimate growth);
+  - running to ~100 Myr to finish accretion.
+- **Outputs:** `solar_system/rung6_terrestrial/data/terrestrial_seed{1..8}_pl200.npz` and the plots
+  `terrestrial_systems_pl200.png` and `terrestrial_energy_pl200.png`.
 
 ### Rung 7: Long-Term Orbital Evolution
 Integrate our system and the real one for Myr timescales.
