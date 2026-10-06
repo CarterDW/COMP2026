@@ -210,6 +210,45 @@ orbital phases and the small initial eccentricities and inclinations; an earlier
 - **Outputs:** `solar_system/rung6_terrestrial/data/terrestrial_seed{1..8}_pl200.npz` and the plots
   `terrestrial_systems_pl200.png` and `terrestrial_energy_pl200.png`.
 
+### Rung 6b: Drifting Pebbles -> Inner-Disk Planetesimals (0.1-4 AU, first pebbles to 3 Myr)
+Why: the Rung 6 planets form too far out because the smooth disk puts only 0.63 Mearth of solids inside 1.5 AU. But
+about 370 Mearth of pebbles (about 90 Mearth of rock) drift through the inner disk before the giant's core reaches
+pebble isolation, at about 1.2 Myr. The question is whether physics turns any of it into planetesimals there.
+Literature review: `solar_system/rung6_terrestrial/literature_review_inner_disk.md`.
+
+Model (`nbody/pebble_disk.py`): 1D radial transport of rock and ice pebbles on the Rung 5 gas disk.
+- Pebble size: St = min(0.05, fragmentation limit). v_frag is 10 m/s for icy pebbles and 1 or 10 m/s for dry
+  ones.
+- Drift: with the dust's back-reaction (Nakagawa et al. 1986), plus the gas inflow (alpha_acc) and turbulent
+  diffusion (alpha_turb).
+- Snow line: ice sublimates inside it.
+- Streaming instability: planetesimals form at zeta per orbit wherever Z exceeds Z_crit(St, alpha_turb) (Lim et al.
+  2024, or Li & Youdin 2021) and St >= 0.01.
+- Supply: the run starts when the pebble growth front passes 4 AU (3.7 kyr) with the local dust as pebbles. After
+  that the pebbles arrive through 4 AU: the full growth-front flux before 1 Myr, then what the Rung 5 embryos let
+  through (zero after 1.23 Myr).
+- **Check:**
+  - The thresholds reproduce the published fits at their own data points.
+  - The drift law has the right limits: a test particle, full back-reaction, and grains moving with the gas.
+  - A steady dilute flux matches F / (2 pi r |v_r|) to 1.1%.
+  - At the snow line, the jam of slow dry rock has the analytic size, with no numerical dam upstream. (The first
+    version averaged velocities across the jump; it dammed the last icy cell and made 90% of the planetesimals.)
+  - The mass budget (inflow = left + star + vapor + planetesimals) closes to 1e-14.
+- **Found** (12 runs: v_frag_dry 1 or 10 m/s x zeta 1e-4, 1e-3, 1e-2 x both thresholds):
+  - **No planetesimals form inside 2.7 AU in any run, at any resolution.** Even with sticky (10 m/s) silicates the
+    pebble-to-gas ratio there is 0.004 at 4 kyr, falling to 2e-4 by 1 Myr, against a threshold of 0.023. With
+    1 m/s silicates the dry pebbles are too small for the streaming instability (St = 1e-3).
+  - Of the pebble mass through 4 AU (369 Mearth), about 76% sublimates, 24% reaches the star and 0.02-0.7% forms
+    planetesimals.
+  - Planetesimals form only at or outside the snow line, 0.05-2.4 Mearth in total, all within the first 10-20 kyr.
+    They form while the local dust and the early pebble surge are near threshold, and where the dry-rock jam
+    diffuses back across the snow line.
+  - The snow-line amount is not converged with resolution (0.12, 0.25 and 0.36 Mearth at 100, 200 and 400 cells):
+    the model's snow line is a sharp step.
+  - This confirms the review's estimate: with a passive disk, "physics says" the inner rock deficit stays.
+- **Next (Rung 6b, step 2):** an early hot phase driven by our own Rung 4/4b accretion history (accretion heating),
+  which could put the silicate sublimation line near 1 AU while the pebble flux is high.
+
 ### Rung 7: Long-Term Orbital Evolution
 Integrate our system and the real one for Myr timescales.
 - **Check:** The energy error stays bounded over ~1e8 steps.
