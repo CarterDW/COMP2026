@@ -52,12 +52,62 @@ def P_grid(P):
     return out
 
 
-def make_gaussian(P, seed):
-    """A real Gaussian field delta(x) on the grid with power spectrum P(k), a callable."""
+def gaussian_from_grid(Pg, seed):
+    """A real Gaussian field with power Pg, given per grid mode (flattened, Pg[0] = 0)."""
     rng = np.random.default_rng(seed)
     w = box_muller(rng, NC).reshape(NG, NG, NG)
-    amp = np.sqrt(NC * P_grid(P) / V).reshape(NG, NG, NG)
+    amp = np.sqrt(NC * Pg / V).reshape(NG, NG, NG)
     return np.fft.ifftn(np.fft.fftn(w) * amp).real
+
+
+def make_gaussian(P, seed):
+    """A real Gaussian field delta(x) on the grid with power spectrum P(k), a callable."""
+    return gaussian_from_grid(P_grid(P), seed)
+
+
+def xi_grid(Pg):
+    """The correlation function on the grid separations, xi(r) = (1/V) sum_k P_k e^{ik.r}.
+
+    np.fft.ifftn carries a 1/N_c, so xi = N_c ifftn(P) / V. xi at r = 0 is the
+    cell variance, sum_k P_k / V, which is Parseval again.
+    """
+    return (NC * np.fft.ifftn(Pg.reshape(NG, NG, NG)) / V).real
+
+
+def lognormal_PG(P):
+    """The Gaussian power P_G whose lognormal transform has power P.
+
+    For delta = exp(g - sigma_G^2/2) - 1 with g Gaussian, the correlation functions
+    obey 1 + xi_LN = exp(xi_G). So xi_G = ln(1 + xi_LN), and P_G is its FFT.
+
+    Two things are done to P_G, and both are returned so the checks can measure
+    them, not ignore them:
+      * modes where P_G < 0 are clipped to 0, since no Gaussian field has negative
+        power. That is the price of the trick when the target is strongly
+        nonlinear.
+      * the k = 0 mode of P_G is dropped, because the Gaussian generator has no
+        k = 0 mode. That shifts xi_G by the constant c = -P_G(0)/V, which rescales
+        the lognormal power at every k != 0 by exp(c).
+    """
+    Pg = P_grid(P)
+    PG = (np.fft.fftn(np.log1p(xi_grid(Pg))) * V / NC).real.ravel()
+    c = -PG[0] / V
+    PG[0] = 0.0
+    clipped = PG < 0
+    clip_info = dict(n_modes=int(clipped.sum()), frac_power=-PG[clipped].sum() / PG[~clipped].sum())
+    PG[clipped] = 0.0
+    return PG, c, clip_info
+
+
+def make_lognormal(PG, seed):
+    """A lognormal field delta = exp(g - sigma_G^2/2) - 1, where g has power PG.
+
+    sigma_G^2 is the theoretical variance, sum PG / V, not the sample variance.
+    That keeps <1 + delta> = 1 in expectation without dividing by each box's own
+    mean, so no extra sample-dependent scaling enters P_hat.
+    """
+    g = gaussian_from_grid(PG, seed)
+    return np.expm1(g - 0.5 * PG.sum() / V)
 
 
 def _bin(values):
