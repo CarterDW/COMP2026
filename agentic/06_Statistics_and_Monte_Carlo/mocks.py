@@ -20,29 +20,33 @@ OM, S8 = 0.31, 0.81
 
 
 @functools.lru_cache(maxsize=None)
-def _PG():
-    return field.lognormal_PG(lambda k: cosmo.P_model(k, OM, S8))[0]
+def _PG(s8):
+    return field.lognormal_PG(lambda k: cosmo.P_model(k, OM, s8))[0]
 
 
-def _one(seed):
-    d = field.make_lognormal(_PG(), seed)
+def _one(args):
+    seed, s8 = args
+    d = field.make_lognormal(_PG(s8), seed)
     y = np.log1p(d)
     z = (d - d.mean()) / d.std()
     stats = [d.min(), d.var(), y.mean(), y.var(), (z**3).mean()]
     return np.concatenate([field.measure_P(d)[1], stats])
 
 
-def lognormal_pool(n, workers=16):
-    """(P_hat, stats) for n lognormal mocks, shapes (n, bins) and (n, 5).
+def lognormal_pool(n, s8=S8, workers=16):
+    """(P_hat, stats) for n lognormal mocks with amplitude s8, shapes (n, bins) and (n, 5).
 
     stats columns: min delta, var delta, mean ln(1+delta), var ln(1+delta), skew delta.
+    Every s8 uses the same seeds, so the pools are the same initial white noise
+    at different amplitudes, i.e. the same universe at different epochs.
     """
-    cache = ROOT / "results" / f"lognormal_pool_{n}.npz"
+    tag = "" if s8 == S8 else f"_s8_{s8:.6g}"
+    cache = ROOT / "results" / f"lognormal_pool_{n}{tag}.npz"
     if cache.exists():
         d = np.load(cache)
         return d["P_hat"], d["stats"]
     with ProcessPoolExecutor(workers) as ex:
-        X = np.array(list(ex.map(_one, range(SEED0, SEED0 + n), chunksize=8)))
+        X = np.array(list(ex.map(_one, [(s, s8) for s in range(SEED0, SEED0 + n)], chunksize=8)))
     nb = len(field.EDGES) - 1
     cache.parent.mkdir(exist_ok=True)
     np.savez(cache, P_hat=X[:, :nb], stats=X[:, nb:])
