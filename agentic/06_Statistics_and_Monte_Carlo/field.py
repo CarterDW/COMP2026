@@ -161,3 +161,18 @@ def gaussian_P_hat(Pg, seed):
     """
     w = box_muller(np.random.default_rng(seed), NC).reshape(NG, NG, NG)
     return _bin(np.abs(np.fft.fftn(w).ravel())**2 * Pg / NC)[0]
+
+
+# Every in-range grid mode has |k|^2 = n^2 k_f^2 for an integer n^2, so a bin's
+# average of P only needs P at the ~3400 distinct |k| values, weighted by how
+# many modes share each one. This is bin_model without 2 million evaluations,
+# which is what makes an MCMC likelihood call cheap.
+_n2 = np.rint((_K.ravel()[_IN] / KF)**2).astype(np.int64)
+_ukey, _ucnt = np.unique(_n2 * 1000 + _BIN[_IN], return_counts=True)
+_UK, _UBIN = KF * np.sqrt(_ukey // 1000), _ukey % 1000
+
+
+def bin_model_fast(P):
+    """Same as bin_model(P), from P at the distinct |k| values only."""
+    nb = len(EDGES) - 1
+    return np.bincount(_UBIN, weights=P(_UK) * _ucnt, minlength=nb) / np.bincount(_UBIN, weights=_ucnt, minlength=nb)
