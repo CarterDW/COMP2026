@@ -112,8 +112,8 @@ def tophat(x):
 def sigma_R(P, R):
     """sigma(R)^2 = (1/2 pi^2) int k^2 P(k) W(kR)^2 dk, for a callable P(k)."""
     k = _K_INT
-    integrand = k**3 * P(k) * tophat(k * R)**2 / (2 * np.pi**2)
-    return np.sqrt(np.trapz(integrand, np.log(k)))
+    f = k**3 * P(k) * tophat(k * R)**2 / (2 * np.pi**2)
+    return np.sqrt(np.sum(0.5 * (f[1:] + f[:-1]) * np.diff(np.log(k))))   # trapezoid in ln k
 
 
 def P_model(k, Om, s8, wiggle=True):
