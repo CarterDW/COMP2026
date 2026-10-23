@@ -77,6 +77,17 @@ def xy_energy(theta):
     return -bonds.mean(axis=(1, 2))
 
 
+def xy_bond_sums(theta):
+    """Per replica, (sum cos dtheta, sum sin dtheta) over x-bonds and over y-bonds: four arrays (R,).
+
+    The stiffness is Upsilon = (1/N)[<sum_x cos> - beta <(sum_x sin)^2>], the free
+    energy's response to a twist along x; averaging the x and y versions halves the noise.
+    """
+    dx = np.roll(theta, -1, 2) - theta
+    dy = np.roll(theta, -1, 1) - theta
+    return [f(d).sum(axis=(1, 2)) for d in (dx, dy) for f in (np.cos, np.sin)]
+
+
 def wrap(d):
     """Angle differences wrapped to [-pi, pi)."""
     return (d + np.pi) % TWO_PI - np.pi
