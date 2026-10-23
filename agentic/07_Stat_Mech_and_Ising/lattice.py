@@ -77,6 +77,25 @@ def xy_energy(theta):
     return -bonds.mean(axis=(1, 2))
 
 
+def wrap(d):
+    """Angle differences wrapped to [-pi, pi)."""
+    return (d + np.pi) % TWO_PI - np.pi
+
+
+def vortices(theta):
+    """Integer vortex charge on every plaquette, shape (R, L, L).
+
+    Plaquette (i, j) has corners (i, j), (i, j+1), (i+1, j+1), (i+1, j), with x
+    along j and y along i. Going around it anticlockwise, the wrapped angle
+    differences sum to 2 pi q, with q in {-1, 0, +1}.
+    """
+    right = np.roll(theta, -1, 2)
+    up_right = np.roll(right, -1, 1)
+    up = np.roll(theta, -1, 1)
+    loop = wrap(right - theta) + wrap(up_right - right) + wrap(up - up_right) + wrap(theta - up)
+    return np.rint(loop / TWO_PI).astype(int)
+
+
 def tune_delta(theta, beta, n_sweeps=200, target=0.5):
     """Warm up while adapting the step size towards the target acceptance. Returns delta (R,).
 
