@@ -82,3 +82,13 @@ Again, students came up with their own problems.
 2. **Randon-Spin Ising Model.** (x2 students). Ising model, but bond strength is $J$ with probability $p$ and $-J$ with probability $(1-p)$. There is a phase transition between the paramagnetic and ferromagnetic phase in the $(p,T)$ plane.
 3. **Kosterlitz-Thouless Transition.** (x2 students) Were interested in Kibble-Zurek mechanism, but it was too long to compute so went down two dimensions, from 4d to 2d. Sees vortex proliferation at high-T.
 4. **Diffusion Monte Carlo QM.** Uses diffusion MC to study energies of SHO and Hydrogen atom.
+
+Week 7: Optimization
+
+1. **Intrinsic Alignment.**
+2. **Protein Folding.**
+3. **Lennard Jones with Many Atoms.**
+4. **Baseball Pitch Optimization.**
+5. **CMB Power Spectrum.**
+6. **Thomson Problem.** (x2 students).
+7. **Tight Binding Model for C60.**
