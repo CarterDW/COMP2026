@@ -1,0 +1,19 @@
+[spread] data mock is |u|^2 = 30.7 from the truth mean (expect ~30)
+         chi2 at truth, 200 repops: mean 31.4 (predict 30.4), std 7.5 (predict 6.8; sqrt(2p) = 7.7)
+
+[fd] d<chi2>/d mu_c at mu_c = 0.9: 256 +/- 5 (200 common-seed pairs, h = 0.05);  slice-mean secant: 270
+     independent seeds h: 1e-03  2e-03  5e-03  1e-02  2e-02  5e-02  1e-01
+                       sd:    5988     2562     1343      489      250      156       57
+                       |grad|/sd of one FD estimate: 0.04  0.10  0.19  0.52  1.02  1.64  4.48
+     common seeds      h: 1e-03  2e-03  5e-03  1e-02  2e-02  5e-02  1e-01
+                       sd:    2607     1416      569      258      125       70       39
+                       |grad|/sd of one FD estimate: 0.10  0.18  0.45  0.99  2.05  3.65  6.60
+     independent seeds: log-log slope of sd vs h = -0.99 (expect -1)
+
+[nm] Nelder-Mead, 600 evaluations max, one repopulation each
+  start 0: nfev 600, reported chi2 39.3, re-scored 65.6 +/- 8.8;  max |dtheta|/range = 0.166  (Maximum number of function evaluations has been exceeded.)
+           logMmin=12.677  sigma_logM=0.338  alpha=0.925  logM1=13.608  central_alignment_strength=0.970  satellite_alignment_strength=0.761
+  start 1: nfev 600, reported chi2 17.6, re-scored 32.6 +/- 6.5;  max |dtheta|/range = 0.143  (Maximum number of function evaluations has been exceeded.)
+           logMmin=12.877  sigma_logM=0.525  alpha=1.004  logM1=13.875  central_alignment_strength=0.695  satellite_alignment_strength=0.459
+  start 2: nfev 600, reported chi2 21.7, re-scored 49.6 +/- 13.2;  max |dtheta|/range = 0.096  (Maximum number of function evaluations has been exceeded.)
+           logMmin=12.858  sigma_logM=0.337  alpha=1.293  logM1=14.116  central_alignment_strength=0.846  satellite_alignment_strength=0.632
