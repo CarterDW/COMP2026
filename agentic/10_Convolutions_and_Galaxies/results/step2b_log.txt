@@ -1,0 +1,21 @@
+[airy] first dark ring at 9.89 px; expected 1.22 lambda/D = 9.76 px
+[spikes] one vane at 30 deg: azimuthal peak at 120.5 deg (expected 120), contrast 5.3x
+[screens] r = 0.03 m: FFT part / its discrete theory = 1.001 (+0.2 sigma); full screen / Kolmogorov = 0.926
+[screens] r = 0.09 m: FFT part / its discrete theory = 1.002 (+0.3 sigma); full screen / Kolmogorov = 0.892
+[screens] r = 0.30 m: FFT part / its discrete theory = 1.006 (+0.5 sigma); full screen / Kolmogorov = 0.838
+[screens] r = 0.90 m: FFT part / its discrete theory = 1.017 (+0.7 sigma); full screen / Kolmogorov = 0.761
+[seeing] i: FWHM 1.361" vs 0.98 lambda/r0 = 1.345" (r0 = 11.5 cm, pupil 586 of 2048 px)
+[seeing] r: FWHM 1.414" vs 0.98 lambda/r0 = 1.400" (r0 = 9.0 cm, pupil 717 of 2048 px)
+[seeing] g: FWHM 1.488" vs 0.98 lambda/r0 = 1.477" (r0 = 6.5 cm, pupil 937 of 2048 px)
+[chromatic] FWHM g/i = 1.0931; Kolmogorov lambda^(-1/5) predicts 1.0984
+[moffat] r-band long exposure: Moffat FWHM 1.406", beta = 5.45 (Trujillo et al. 2001: 4.765; step-2a field stars: 4.5)
+[speckle] 400-screen average FWHM 1.228" vs exact 1.414" (ratio 0.868; the screens' missing large-scale power narrows it)
+[bank] (17, 9, 3, 120, 120): flux in the 120 px frame, min 0.9931, max 1.0000
+[bank] target FWHM 2.0 px -> step-2a Moffat fit 2.19 px
+[bank] target FWHM 4.0 px -> step-2a Moffat fit 3.95 px
+[bank] target FWHM 6.0 px -> step-2a Moffat fit 5.80 px
+[bank] target FWHM 8.0 px -> step-2a Moffat fit 7.76 px
+[bank] target FWHM 10.0 px -> step-2a Moffat fit 9.81 px
+[locus] channel gains ln(r/i), ln(g/i) offsets = [-0.016  0.001]; median distance to the curve 0.076; 100% project inside 3000-30000 K; median T 5181 K
+[locus] field-star principal axis vs blackbody tangent: 13.8 deg; axis ratio sqrt(l1/l2) = 3.4
+PASS: Airy, spike direction, screen statistics, seeing FWHM, chromatic scaling, Moffat beta, bank FWHM, track flux, colors on the blackbody locus.

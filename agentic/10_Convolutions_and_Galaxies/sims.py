@@ -72,15 +72,52 @@ def cosmic_ray(rng, flux):
     return u
 
 
-def trail(rng, fwhm, flux_per_px, color=(1.0, 1.0, 1.0)):
+def trail(rng, fwhm, flux_per_px, color=(1.0, 1.0, 1.0), theta=None):
     """A straight line through near the center with a Gaussian cross-section of width fwhm."""
-    theta = rng.uniform(0, np.pi)
+    theta = rng.uniform(0, np.pi) if theta is None else theta
     c0 = (N - 1) / 2 + rng.uniform(-3, 3, 2)
     yy, xx = np.mgrid[:N, :N].astype(float)
     d = -(xx - c0[0]) * np.sin(theta) + (yy - c0[1]) * np.cos(theta)   # distance to the line
     sig = fwhm / 2.355
     prof = flux_per_px * np.exp(-0.5 * (d / sig) ** 2) / (np.sqrt(2 * np.pi) * sig)
     return prof[..., None] * np.asarray(color)
+
+
+def cosmic_track(rng, flux, max_len=15):
+    """Level 2: a straight track of length 2..max_len px at a random angle, one band,
+    deposited by bilinear splatting of points along the segment (sharper than any PSF)."""
+    u = np.zeros((N, N, 3))
+    band, L, th = rng.integers(3), rng.uniform(2, max_len), rng.uniform(0, np.pi)
+    c = (N - 1) / 2 + rng.uniform(-3, 3, 2)
+    s = np.linspace(-L / 2, L / 2, int(8 * L) + 1)
+    ys, xs = c[0] + s * np.sin(th), c[1] + s * np.cos(th)
+    y0, x0 = np.floor(ys).astype(int), np.floor(xs).astype(int)
+    fy, fx = ys - y0, xs - x0
+    w = flux / len(s)
+    for dy, dx, wt in [(0, 0, (1 - fy) * (1 - fx)), (1, 0, fy * (1 - fx)),
+                       (0, 1, (1 - fy) * fx), (1, 1, fy * fx)]:
+        np.add.at(u[..., band], (np.clip(y0 + dy, 0, N - 1), np.clip(x0 + dx, 0, N - 1)), w * wt)
+    return u
+
+
+def flicker_trail(rng, fwhm, flux_per_px, depth=0.6):
+    """Level 2: a trail whose brightness varies along its length (a tumbling satellite)."""
+    theta = rng.uniform(0, np.pi)
+    u = trail(rng, fwhm, flux_per_px, theta=theta)
+    period, phase = rng.uniform(10, 40), rng.uniform(0, 2 * np.pi)
+    yy, xx = np.mgrid[:N, :N].astype(float)
+    along = xx * np.cos(theta) + yy * np.sin(theta)          # distance along the trail
+    return u * (1 + depth * np.sin(2 * np.pi * along / period + phase))[..., None]
+
+
+def star_from_bank(rng, bank, fwhm_px, flux, color):
+    """Level 2: a star from the optics PSF bank: (i, r, g) PSFs at the nearest FWHM and
+    a random subpixel phase, shifted by a random whole number of pixels (|shift| <= 2)."""
+    k = int(np.argmin(np.abs(bank["fwhm"] - fwhm_px)))
+    p = rng.integers(bank["psf"].shape[1])
+    stamps = bank["psf"][k, p]                    # (3, N, N): bands i, r, g
+    u = flux * np.moveaxis(stamps, 0, -1) * np.asarray(color)
+    return np.roll(u, tuple(rng.integers(-2, 3, 2)), axis=(0, 1))
 
 
 def spiked_star(rng, fwhm, beta, flux, color, spike_frac=0.02, arm_width=0.7):
