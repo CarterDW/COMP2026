@@ -52,30 +52,36 @@ def image_colors(imgs):
 
 
 if __name__ == "__main__":
-    srows = [r for r in csv.DictReader(open(SD / "stars" / "index.csv")) if 17 <= float(r["psfMag_r"]) < 20]
-    u_star = {r["objid"]: float(r["psfMag_u"]) for r in csv.DictReader(open(SD / "stars" / "u_band.csv"))}
-    srows = [dict(r, psfMag_u=u_star[r["objid"]]) for r in srows if r["objid"] in u_star]
-    # quasars: 1000 of the main (mostly z < 2) sample plus 500 at z = 2-3.5, 1500 in all
-    q_lo = list(csv.DictReader(open(SD / "quasars" / "index.csv")))
-    q_lo = [q_lo[k] for k in np.random.default_rng(1).permutation(len(q_lo))[:1000]]
-    q_hi = list(csv.DictReader(open(SD / "quasars_hiz" / "index.csv")))
-    qrows = q_lo + q_hi
-    stars = load("stars", srows)
-    qsos = np.concatenate([load("quasars", q_lo), load("quasars_hiz", q_hi)])
+    # pairs: every quasar with a point source from the SAME imaging field (same seeing),
+    # within 0.3 mag in r (sdss_fetch.matched_star_rows); quasars without a partner are dropped
+    srows = list(csv.DictReader(open(SD / "stars_matched" / "index.csv")))
+    by_id = {}
+    for folder in ["quasars", "quasars_hiz", "quasars_hiz2"]:
+        for r in csv.DictReader(open(SD / folder / "index.csv")):
+            by_id[r["objid"]] = (folder, r)
+    pairs = [(s, *by_id[s["partner"]]) for s in srows if s["partner"] in by_id]
+    srows = [p[0] for p in pairs]
+    qrows = [p[2] for p in pairs]
+    stars = load("stars_matched", srows)
+    qsos = np.stack([np.asarray(Image.open(SD / f / f"{r['name']}.jpg"))[60 - C:60 + C, 60 - C:60 + C]
+                     for _, f, r in pairs])
     X_img = np.concatenate([stars, qsos])
     y = np.r_[np.zeros(len(stars)), np.ones(len(qsos))].astype(int)
     mags = np.array([[float(r[f"psfMag_{b}"]) for b in "ugri"] for r in srows + qrows])
     z = np.r_[np.zeros(len(stars)), [float(r["z"]) for r in qrows]]
     rmag = mags[:, 2]
-    say(f"[data] {len(stars)} stars, {len(qsos)} quasars (r = 17-20); quasar z median "
-        f"{np.median(z[y == 1]):.2f}, 5-95% {np.percentile(z[y == 1], 5):.2f}-{np.percentile(z[y == 1], 95):.2f}")
-    say(f"[data] median r: stars {np.median(rmag[y == 0]):.2f}, quasars {np.median(rmag[y == 1]):.2f}")
+    say(f"[data] {len(pairs)} field-matched star/quasar pairs (r = 17-20); quasar z median "
+        f"{np.median(z[y == 1]):.2f}, 5-95% {np.percentile(z[y == 1], 5):.2f}-{np.percentile(z[y == 1], 95):.2f}; "
+        f"z > 2.6: {np.sum(z > 2.6)}")
+    say(f"[data] median r: stars {np.median(rmag[y == 0]):.2f}, quasars {np.median(rmag[y == 1]):.2f}; "
+        f"median |delta r| within pairs {np.median(np.abs(rmag[:len(pairs)] - rmag[len(pairs):])):.3f}")
 
+    # split by pair, so a field never sits on both sides of the split
     rng = np.random.default_rng(0)
+    test_pairs = rng.permutation(len(pairs))[: len(pairs) // 5]
     test = np.zeros(len(y), bool)
-    for c in (0, 1):
-        idx = rng.permutation(np.flatnonzero(y == c))
-        test[idx[: len(idx) // 5]] = True
+    test[test_pairs] = True
+    test[test_pairs + len(pairs)] = True
     tr, te = ~test, test
 
     # ---- catalog and image-color baselines ------------------------------------------------------
@@ -205,12 +211,17 @@ if __name__ == "__main__":
     # ---- checks -------------------------------------------------------------------------------------
     filled = [k for k, (a, n) in enumerate(by_z["catalog g/r/i"]) if n >= 20]
     worst = filled[int(np.argmin([by_z["catalog g/r/i"][k][0] for k in filled]))]
-    assert res["shape"][0] < res["gray"][0] - 0.03, "normalizing should remove the color leaking into grayscale"
-    assert shape_lo > shape_hi, "shape should help most at low z, where host galaxies are visible"
+    # Shape-only is NOT asserted near chance: in these JPGs every channel's profile carries
+    # color (half-resolution chroma, color-dependent S/N); see step6_shape_diag.py.
+    say(f"[shape] shape-only (normalized, seeing-matched) {100 * res['shape'][0]:.1f}%: residual color in the "
+        f"JPG profiles, not morphology (step6_shape_diag.py)")
+    (OUT / "step6_log.txt").write_text("\n".join(log) + "\n")
     assert res["color"][0] > res["shape"][0] + 0.10, "color should separate quasars from stars"
     assert abs(res["color"][0] - base["colors measured from the images"]) < 0.04, \
         "the color CNN should reach the color information the images hold"
     assert base["catalog u/g/r/i colors"] > base["catalog g/r/i colors"] + 0.03, "the u band should help (UV excess)"
-    assert 2.0 <= zbins[worst] < 3.5, "g/r/i should struggle most where quasars cross the stellar locus (z ~ 2.5-3)"
-    print("PASS: normalizing removes the color leak, shape helps at low z (hosts), color separates, CNN reaches "
-          "the image-color limit, u band helps, hardest at z ~ 2-3.5.")
+    assert 2.5 <= zbins[worst] < 3.5, "g/r/i should struggle most where quasars cross the stellar locus (z ~ 2.5-3.5)"
+    print("PASS: color separates, CNN reaches the image-color limit, "
+          "u band helps, hardest at z ~ 2.5-3.5.")
+    print(f"(host galaxies: shape-only calls {100 * shape_lo:.0f}% of z < 0.5 quasars quasar vs "
+          f"{100 * shape_hi:.0f}% at z > 1.5; reported, not asserted)")

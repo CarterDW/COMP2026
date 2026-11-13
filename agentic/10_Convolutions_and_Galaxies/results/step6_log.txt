@@ -1,13 +1,14 @@
-[data] 1500 stars, 1500 quasars (r = 17-20); quasar z median 1.13, 5-95% 0.35-2.12
-[data] median r: stars 18.48, quasars 18.95
-[baseline] catalog g/r/i colors: 90.7%
-[baseline] catalog u/g/r/i colors: 95.8%
-[baseline] colors measured from the images: 85.7%
-[cnn] color images: 85.6 +/- 0.9%
-[cnn] gray  images: 74.3 +/- 1.6%
-[cnn] shape images: 70.4 +/- 0.5%
-[by z] CNN, color images: quasars called quasar, z bins [0, 1, 1.5, 2.0, 2.5, 3.0, 3.5, 6]: 85%(n=109) 71%(n=63) 68%(n=19) 92%(n=107) nan%(n=0) nan%(n=0) 0%(n=1)
-[by z] catalog g/r/i: quasars called quasar, z bins [0, 1, 1.5, 2.0, 2.5, 3.0, 3.5, 6]: 93%(n=109) 86%(n=63) 95%(n=19) 97%(n=107) nan%(n=0) nan%(n=0) 0%(n=1)
-[by z] catalog u/g/r/i: quasars called quasar, z bins [0, 1, 1.5, 2.0, 2.5, 3.0, 3.5, 6]: 95%(n=109) 98%(n=63) 95%(n=19) 99%(n=107) nan%(n=0) nan%(n=0) 0%(n=1)
-[by z] stars called star by the color CNN: 86.0%
-[shape] shape-only CNN calls quasars quasar: z < 0.5 67% (n = 36), z > 1.5 67% (n = 128); stars called star 72%
+[data] 2490 field-matched star/quasar pairs (r = 17-20); quasar z median 1.19, 5-95% 0.35-2.97; z > 2.6: 519
+[data] median r: stars 19.04, quasars 19.03; median |delta r| within pairs 0.022
+[baseline] catalog g/r/i colors: 91.3%
+[baseline] catalog u/g/r/i colors: 95.2%
+[baseline] colors measured from the images: 87.8%
+[cnn] color images: 86.0 +/- 0.2%
+[cnn] gray  images: 69.8 +/- 0.9%
+[cnn] shape images: 63.5 +/- 1.2%
+[by z] CNN, color images: quasars called quasar, z bins [0, 1, 1.5, 2.0, 2.5, 3.0, 3.5, 6]: 93%(n=180) 90%(n=84) 94%(n=18) 93%(n=107) 87%(n=104) 100%(n=3) nan%(n=0)
+[by z] catalog g/r/i: quasars called quasar, z bins [0, 1, 1.5, 2.0, 2.5, 3.0, 3.5, 6]: 96%(n=180) 85%(n=84) 100%(n=18) 97%(n=107) 80%(n=104) 100%(n=3) nan%(n=0)
+[by z] catalog u/g/r/i: quasars called quasar, z bins [0, 1, 1.5, 2.0, 2.5, 3.0, 3.5, 6]: 97%(n=180) 99%(n=84) 100%(n=18) 99%(n=107) 76%(n=104) 100%(n=3) nan%(n=0)
+[by z] stars called star by the color CNN: 80.7%
+[shape] shape-only CNN calls quasars quasar: z < 0.5 60% (n = 58), z > 1.5 71% (n = 234); stars called star 59%
+[shape] shape-only (normalized, seeing-matched) 63.5%: residual color in the JPG profiles, not morphology (step6_shape_diag.py)

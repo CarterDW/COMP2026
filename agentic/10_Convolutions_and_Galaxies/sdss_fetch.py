@@ -154,6 +154,49 @@ def quasar_hiz_rows():
     return rows
 
 
+def quasar_hiz2_rows():
+    """Quasars at z = 2.6-3.4, where their g/r/i colors cross the stellar locus."""
+    q = ("select top 500 p.objid, p.ra, p.dec, p.psfMag_u, p.psfMag_g, p.psfMag_r, p.psfMag_i, s.z "
+         "from SpecObj s join PhotoObj p on s.bestobjid = p.objid "
+         "where s.class = 'QSO' and p.type = 6 and p.clean = 1 and s.zWarning = 0 "
+         "and s.z between 2.6 and 3.4 and p.psfMag_r between 17 and 20")
+    rows = [{"name": f"qso_{r['objid']}", **r} for r in sql(q)]
+    print(f"z = 2.6-3.4 quasars: {len(rows)}", flush=True)
+    return rows
+
+
+def matched_star_rows(qso_rows):
+    """For each quasar, a point source (type 6, clean) from the SAME imaging field (same
+    seeing) within 0.3 mag in psfMag_r. Photometric, not spectroscopic: at r < 20 a few
+    percent of point sources are themselves quasars."""
+    qso_ids = {r["objid"] for r in qso_rows}
+    fields = {}
+    for k in range(0, len(qso_rows), 50):
+        chunk = ",".join(r["objid"] for r in qso_rows[k:k + 50])
+        for r in sql(f"select objid, run, camcol, field from PhotoObj where objid in ({chunk})"):
+            fields[r["objid"]] = (r["run"], r["camcol"], r["field"])
+    keys = sorted({fields[r["objid"]] for r in qso_rows if r["objid"] in fields})
+    cands = {}
+    for k in range(0, len(keys), 20):
+        cond = " or ".join(f"(run = {a} and camcol = {b} and field = {c})" for a, b, c in keys[k:k + 20])
+        for r in sql("select objid, ra, dec, run, camcol, field, psfMag_u, psfMag_g, psfMag_r, psfMag_i "
+                     f"from PhotoObj where type = 6 and clean = 1 and psfMag_r between 16.7 and 20.3 and ({cond})"):
+            cands.setdefault((r["run"], r["camcol"], r["field"]), []).append(r)
+    used, rows = set(), []
+    for q in qso_rows:
+        f = fields.get(q["objid"])
+        pool = [c for c in cands.get(f, []) if c["objid"] not in qso_ids and c["objid"] not in used]
+        if not pool:
+            continue
+        best = min(pool, key=lambda c: abs(float(c["psfMag_r"]) - float(q["psfMag_r"])))
+        if abs(float(best["psfMag_r"]) - float(q["psfMag_r"])) > 0.3:
+            continue
+        used.add(best["objid"])
+        rows.append({"name": f"mstar_{best['objid']}", "partner": q["objid"], **best})
+    print(f"field-matched stars: {len(rows)} for {len(qso_rows)} quasars ({len(keys)} fields)", flush=True)
+    return rows
+
+
 def star_u_band():
     """psfMag_u for the downloaded stars (for the catalog UV-excess baseline only)."""
     rows = list(csv.DictReader(open(OUT / "stars" / "index.csv")))
@@ -196,6 +239,12 @@ if __name__ == "__main__":
         star_u_band()
     if "quasars_hiz" in what:
         fetch_all(quasar_hiz_rows(), OUT / "quasars_hiz")
+    if "matched" in what:
+        fetch_all(quasar_hiz2_rows(), OUT / "quasars_hiz2")
+        qso = []
+        for folder in ["quasars", "quasars_hiz", "quasars_hiz2"]:
+            qso += list(csv.DictReader(open(OUT / folder / "index.csv")))
+        fetch_all(matched_star_rows(qso), OUT / "stars_matched")
     if "galaxies" in what:
         fetch_all(galaxy_rows(), OUT / "galaxies")
     if "stars" in what:
