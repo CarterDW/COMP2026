@@ -55,8 +55,13 @@ if __name__ == "__main__":
     srows = [r for r in csv.DictReader(open(SD / "stars" / "index.csv")) if 17 <= float(r["psfMag_r"]) < 20]
     u_star = {r["objid"]: float(r["psfMag_u"]) for r in csv.DictReader(open(SD / "stars" / "u_band.csv"))}
     srows = [dict(r, psfMag_u=u_star[r["objid"]]) for r in srows if r["objid"] in u_star]
-    qrows = list(csv.DictReader(open(SD / "quasars" / "index.csv")))
-    stars, qsos = load("stars", srows), load("quasars", qrows)
+    # quasars: 1000 of the main (mostly z < 2) sample plus 500 at z = 2-3.5, 1500 in all
+    q_lo = list(csv.DictReader(open(SD / "quasars" / "index.csv")))
+    q_lo = [q_lo[k] for k in np.random.default_rng(1).permutation(len(q_lo))[:1000]]
+    q_hi = list(csv.DictReader(open(SD / "quasars_hiz" / "index.csv")))
+    qrows = q_lo + q_hi
+    stars = load("stars", srows)
+    qsos = np.concatenate([load("quasars", q_lo), load("quasars_hiz", q_hi)])
     X_img = np.concatenate([stars, qsos])
     y = np.r_[np.zeros(len(stars)), np.ones(len(qsos))].astype(int)
     mags = np.array([[float(r[f"psfMag_{b}"]) for b in "ugri"] for r in srows + qrows])
@@ -87,9 +92,18 @@ if __name__ == "__main__":
 
     # ---- CNNs -------------------------------------------------------------------------------------
     x = torch.tensor(X_img, dtype=torch.float32).permute(0, 3, 1, 2) / 255.0
+    # shape only: linear flux (channel mean), sky-subtracted, divided by the flux inside
+    # r < 8 px, so neither brightness nor color survives (the JPG's channel gains make a
+    # plain grayscale image color-sensitive)
+    yy, xx = np.mgrid[:2 * C, :2 * C]
+    R = np.hypot(yy - (C - 0.5), xx - (C - 0.5))
+    lin = sims.unstretch(X_img, A).mean(-1)
+    lin = lin - np.median(lin[:, R > 18], axis=1)[:, None, None]
+    lin = lin / np.clip(lin[:, R < 8].sum(1), 1e-3, None)[:, None, None]
+    x_shape = torch.tensor(lin[:, None], dtype=torch.float32)
     res, p_cnn = {}, {}
-    for kind in ["color", "gray"]:
-        xk = x if kind == "color" else x.mean(1, keepdim=True)
+    for kind in ["color", "gray", "shape"]:
+        xk = {"color": x, "gray": x.mean(1, keepdim=True), "shape": x_shape}[kind]
         m, s = xk[tr].mean(), xk[tr].std()
         xk = (xk - m) / s
         accs = []
@@ -119,6 +133,12 @@ if __name__ == "__main__":
             " ".join(f"{100 * f:.0f}%(n={n})" for f, n in by_z[name]))
     star_ok = np.mean(p_cnn["color"][y[te] == 0] < 0.5)
     say(f"[by z] stars called star by the color CNN: {100 * star_ok:.1f}%")
+    ps = p_cnn["shape"][y[te] == 1]
+    shape_lo = np.mean(ps[zq < 0.5] > 0.5)
+    shape_hi = np.mean(ps[zq > 1.5] > 0.5)
+    say(f"[shape] shape-only CNN calls quasars quasar: z < 0.5 {100 * shape_lo:.0f}% (n = {(zq < 0.5).sum()}), "
+        f"z > 1.5 {100 * shape_hi:.0f}% (n = {(zq > 1.5).sum()}); stars called star "
+        f"{100 * np.mean(p_cnn['shape'][y[te] == 0] < 0.5):.0f}%")
 
     # ---- figures -----------------------------------------------------------------------------------
     fig, axes = plt.subplots(1, 3, figsize=(16, 4.6), constrained_layout=True)
@@ -149,12 +169,13 @@ if __name__ == "__main__":
     fig.savefig(OUT / "step6_colors.png", dpi=140)
 
     fig, ax = plt.subplots(figsize=(7, 3.8), constrained_layout=True)
-    names = ["CNN gray", "CNN color", "image colors", "catalog g/r/i", "catalog u/g/r/i"]
-    vals = [res["gray"][0], res["color"][0], base["colors measured from the images"],
+    names = ["CNN shape\n(normalized)", "CNN gray", "CNN color", "image\ncolors", "catalog\ng/r/i",
+             "catalog\nu/g/r/i"]
+    vals = [res["shape"][0], res["gray"][0], res["color"][0], base["colors measured from the images"],
             base["catalog g/r/i colors"], base["catalog u/g/r/i colors"]]
-    errs = [res["gray"][1], res["color"][1], 0, 0, 0]
-    ax.bar(names, [100 * v for v in vals], yerr=[100 * e for e in errs], color=["0.6", "tab:blue", "tab:cyan",
-                                                                             "tab:orange", "tab:red"])
+    errs = [res["shape"][1], res["gray"][1], res["color"][1], 0, 0, 0]
+    ax.bar(names, [100 * v for v in vals], yerr=[100 * e for e in errs],
+           color=["0.75", "0.5", "tab:blue", "tab:cyan", "tab:orange", "tab:red"])
     ax.axhline(50, c="k", ls=":")
     ax.set_ylim(40, 100)
     ax.set_ylabel("test accuracy (%)")
@@ -182,10 +203,14 @@ if __name__ == "__main__":
     (OUT / "step6_log.txt").write_text("\n".join(log) + "\n")
 
     # ---- checks -------------------------------------------------------------------------------------
-    worst = int(np.argmin([a for a, n in by_z["catalog g/r/i"]]))
-    assert abs(res["gray"][0] - 0.5) < 0.08, "shape alone should barely separate two kinds of point source"
-    assert res["color"][0] > res["gray"][0] + 0.15, "color should separate quasars from stars"
-    assert abs(res["color"][0] - base["catalog g/r/i colors"]) < 0.06, "the color CNN should approach the g/r/i limit"
+    filled = [k for k, (a, n) in enumerate(by_z["catalog g/r/i"]) if n >= 20]
+    worst = filled[int(np.argmin([by_z["catalog g/r/i"][k][0] for k in filled]))]
+    assert res["shape"][0] < res["gray"][0] - 0.03, "normalizing should remove the color leaking into grayscale"
+    assert shape_lo > shape_hi, "shape should help most at low z, where host galaxies are visible"
+    assert res["color"][0] > res["shape"][0] + 0.10, "color should separate quasars from stars"
+    assert abs(res["color"][0] - base["colors measured from the images"]) < 0.04, \
+        "the color CNN should reach the color information the images hold"
     assert base["catalog u/g/r/i colors"] > base["catalog g/r/i colors"] + 0.03, "the u band should help (UV excess)"
     assert 2.0 <= zbins[worst] < 3.5, "g/r/i should struggle most where quasars cross the stellar locus (z ~ 2.5-3)"
-    print("PASS: gray ~ chance, color separates, CNN ~ g/r/i limit, u band helps, hardest at z ~ 2.5-3.")
+    print("PASS: normalizing removes the color leak, shape helps at low z (hosts), color separates, CNN reaches "
+          "the image-color limit, u band helps, hardest at z ~ 2-3.5.")

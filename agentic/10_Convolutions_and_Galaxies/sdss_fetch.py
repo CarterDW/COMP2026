@@ -142,6 +142,18 @@ def quasar_rows():
     return rows
 
 
+def quasar_hiz_rows():
+    """500 point-source quasars at z = 2-3.5 (r = 17-20), where quasar colors cross the
+    stellar locus; the main query's catalog order left almost none there."""
+    q = ("select top 500 p.objid, p.ra, p.dec, p.psfMag_u, p.psfMag_g, p.psfMag_r, p.psfMag_i, s.z "
+         "from SpecObj s join PhotoObj p on s.bestobjid = p.objid "
+         "where s.class = 'QSO' and p.type = 6 and p.clean = 1 and s.zWarning = 0 "
+         "and s.z between 2.0 and 3.5 and p.psfMag_r between 17 and 20 and (p.objid % 3) = 1")
+    rows = [{"name": f"qso_{r['objid']}", **r} for r in sql(q)]
+    print(f"high-z quasars: {len(rows)}", flush=True)
+    return rows
+
+
 def star_u_band():
     """psfMag_u for the downloaded stars (for the catalog UV-excess baseline only)."""
     rows = list(csv.DictReader(open(OUT / "stars" / "index.csv")))
@@ -182,6 +194,8 @@ if __name__ == "__main__":
     if "quasars" in what:
         fetch_all(quasar_rows(), OUT / "quasars")
         star_u_band()
+    if "quasars_hiz" in what:
+        fetch_all(quasar_hiz_rows(), OUT / "quasars_hiz")
     if "galaxies" in what:
         fetch_all(galaxy_rows(), OUT / "galaxies")
     if "stars" in what:
