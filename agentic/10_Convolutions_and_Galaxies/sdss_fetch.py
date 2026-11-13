@@ -127,6 +127,35 @@ def galaxy_rows():
     return rows
 
 
+def quasar_rows():
+    """Spectroscopic quasars that look like point sources (type 6), 500 per 1-mag bin in
+    psfMag_r from 17 to 20, the same bins as the stars."""
+    rows = []
+    for m in range(17, 20):
+        q = (f"select top 500 p.objid, p.ra, p.dec, p.psfMag_u, p.psfMag_g, p.psfMag_r, p.psfMag_i, s.z "
+             f"from SpecObj s join PhotoObj p on s.bestobjid = p.objid "
+             f"where s.class = 'QSO' and p.type = 6 and p.clean = 1 and s.zWarning = 0 "
+             f"and p.psfMag_r between {m} and {m + 1} and (p.objid % 7) = 3")
+        got = sql(q)
+        print(f"quasars {m}-{m + 1}: {len(got)}", flush=True)
+        rows += [{"name": f"qso_{r['objid']}", **r} for r in got]
+    return rows
+
+
+def star_u_band():
+    """psfMag_u for the downloaded stars (for the catalog UV-excess baseline only)."""
+    rows = list(csv.DictReader(open(OUT / "stars" / "index.csv")))
+    out = []
+    for k in range(0, len(rows), 50):
+        chunk = ",".join(r["objid"] for r in rows[k:k + 50])
+        out += sql(f"select objid, psfMag_u from PhotoObj where objid in ({chunk})")
+    with open(OUT / "stars" / "u_band.csv", "w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=["objid", "psfMag_u"])
+        w.writeheader()
+        w.writerows(out)
+    print(f"star u band: {len(out)} of {len(rows)}")
+
+
 def galaxy_photometry():
     """SDSS model magnitudes (u, g, r) and spectroscopic redshift for every Galaxy Zoo
     galaxy, keyed by DR7 id. Catalog numbers only, no images."""
@@ -150,6 +179,9 @@ if __name__ == "__main__":
     what = sys.argv[1:] or ["stars", "sky"]
     if "photometry" in what:
         galaxy_photometry()
+    if "quasars" in what:
+        fetch_all(quasar_rows(), OUT / "quasars")
+        star_u_band()
     if "galaxies" in what:
         fetch_all(galaxy_rows(), OUT / "galaxies")
     if "stars" in what:
