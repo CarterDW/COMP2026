@@ -1,12 +1,13 @@
-[data] train 6094, validation 1500, known test 1597; blended pair 400, empty sky 400, uncertain galaxy 600
-[classify] known test accuracy 99.1% (galaxy 99.0%, star 98.7%, cosmic ray 99.3%, trail 100.0%)
-[ood] msp         known test flagged 5.2%; blended pair: AUROC 0.717, flagged 10%; empty sky: AUROC 0.730, flagged 2%; uncertain galaxy: AUROC 0.870, flagged 23%
-[ood] energy      known test flagged 5.9%; blended pair: AUROC 0.784, flagged 22%; empty sky: AUROC 0.783, flagged 2%; uncertain galaxy: AUROC 0.859, flagged 18%
-[ood] mahalanobis known test flagged 7.2%; blended pair: AUROC 0.816, flagged 14%; empty sky: AUROC 0.193, flagged 4%; uncertain galaxy: AUROC 0.430, flagged 3%
-[ood] blended pair called as: galaxy 99%, star 0%, cosmic ray 0%, trail 0%
-[ood] empty sky called as: galaxy 0%, star 0%, cosmic ray 0%, trail 100%
-[ood] uncertain galaxy called as: galaxy 94%, star 6%, cosmic ray 0%, trail 0%
-[leave-one-out] msp         cosmic rays never seen: AUROC 0.795, flagged 38% (known flagged 4.8%)
-[leave-one-out] energy      cosmic rays never seen: AUROC 0.684, flagged 8% (known flagged 5.1%)
-[leave-one-out] mahalanobis cosmic rays never seen: AUROC 0.580, flagged 6% (known flagged 8.0%)
-[leave-one-out] held-out cosmic rays called as: galaxy 0%, star 57%, trail 42%
+[blends] built from 34 compact test galaxies (footprint >= 10 px inside the frame)
+[data] train 7594, validation 1800, known test 1897; blended pair 400, uncertain galaxy 600
+[classify] trails called empty sky: 1.0%; empty sky called trail: 0.3%
+[classify] known test accuracy 98.9% (galaxy 99.0%, star 98.7%, cosmic ray 98.7%, trail 99.0%, empty sky 99.3%)
+[ood] msp         known test flagged 5.0%; blended pair: AUROC 0.624, flagged 7%; uncertain galaxy: AUROC 0.884, flagged 28%
+[ood] energy      known test flagged 5.5%; blended pair: AUROC 0.711, flagged 11%; uncertain galaxy: AUROC 0.859, flagged 18%
+[ood] mahalanobis known test flagged 5.6%; blended pair: AUROC 0.843, flagged 23%; uncertain galaxy: AUROC 0.433, flagged 2%
+[ood] blended pair called as: galaxy 98%, star 1%, cosmic ray 0%, trail 0%, empty sky 0%
+[ood] uncertain galaxy called as: galaxy 92%, star 8%, cosmic ray 0%, trail 0%, empty sky 0%
+[leave-one-out] msp         cosmic rays never seen: AUROC 0.950, flagged 74% (known flagged 5.6%)
+[leave-one-out] energy      cosmic rays never seen: AUROC 0.744, flagged 23% (known flagged 5.8%)
+[leave-one-out] mahalanobis cosmic rays never seen: AUROC 0.571, flagged 4% (known flagged 6.6%)
+[leave-one-out] held-out cosmic rays called as: galaxy 0%, star 30%, trail 49%, empty sky 21%

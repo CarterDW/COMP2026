@@ -24,7 +24,8 @@ import sims
 import step3 as s3
 
 OUT = Path(__file__).parent / "results"
-CLASSES = ["galaxy", "star", "cosmic ray", "trail"]
+CLASSES = ["galaxy", "star", "cosmic ray", "trail", "empty sky"]
+LOO_CLASSES = ["galaxy", "star", "trail", "empty sky"]          # cosmic rays held out
 log = []
 
 
@@ -46,10 +47,25 @@ def artifacts(kind, n, sky, rng):
     return np.stack(out)
 
 
+def compact(gals, border=10, max_area=3000):
+    """Galaxies whose generous footprint stays `border` px inside the frame and is small:
+    these can be moved without carrying a cut-off edge or a visible mask outline."""
+    keep = []
+    for k, v in enumerate(gals):
+        lab, _ = __import__("scipy").ndimage.label(sims.object_mask(v, 2.0, 8))
+        foot = lab == lab[60, 60] if lab[60, 60] else np.zeros(v.shape[:2], bool)
+        edge = foot[:border].any() or foot[-border:].any() or foot[:, :border].any() or foot[:, -border:].any()
+        if lab[60, 60] and not edge and foot.sum() < max_area:
+            keep.append(k)
+    return np.array(keep)
+
+
 def blends(gals, n, rng):
+    """Galaxy a (any) plus the light of a compact galaxy b, 12-25 px away."""
+    small = compact(gals)
     out = []
     for _ in range(n):
-        a, b = gals[rng.integers(len(gals))], gals[rng.integers(len(gals))]
+        a, b = gals[rng.integers(len(gals))], gals[small[rng.integers(len(small))]]
         ub = s3.linear(b)
         ub = ub - s3.sky_level(ub)
         # only the galaxy's light, not its sky noise: its generous source footprint, soft-edged
@@ -119,7 +135,7 @@ if __name__ == "__main__":
 
     def known(gal_idx, stars, sky_, n_art):
         X = [prep(gal_idx), prep_v(stars), artifacts("cosmic ray", n_art, sky_, rng),
-             artifacts("trail", n_art, sky_, rng)]
+             artifacts("trail", n_art, sky_, rng), prep_v(sky_[rng.permutation(len(sky_))[:n_art]])]
         y = np.concatenate([np.full(len(x), c) for c, x in enumerate(X)])
         return np.concatenate(X), y
 
@@ -128,16 +144,20 @@ if __name__ == "__main__":
     X_te, y_te = known(test_c, st_te, sky_te, 300)
     unknown = {
         "blended pair": blends(images_dr16[test_c], 400, rng),
-        "empty sky": prep_v(sky_te[:400]),
         "uncertain galaxy": prep(unc[:600]),
     }
+    say(f"[blends] built from {len(compact(images_dr16[test_c]))} compact test galaxies "
+        f"(footprint >= 10 px inside the frame)")
     say(f"[data] train {len(X_tr)}, validation {len(X_va)}, known test {len(X_te)}; "
         + ", ".join(f"{k} {len(v)}" for k, v in unknown.items()))
 
-    # ---- the 4-class model ------------------------------------------------------------------------
-    sc = fit_and_score(X_tr, y_tr, 4, {"val": X_va, "test": X_te, **unknown})
+    # ---- the 5-class model ------------------------------------------------------------------------
+    sc = fit_and_score(X_tr, y_tr, 5, {"val": X_va, "test": X_te, **unknown})
     acc = np.mean(sc["test"]["pred"] == y_te)
-    per = [np.mean(sc["test"]["pred"][y_te == c] == c) for c in range(4)]
+    per = [np.mean(sc["test"]["pred"][y_te == c] == c) for c in range(5)]
+    trail_as_empty = np.mean(sc["test"]["pred"][y_te == 3] == 4)
+    say(f"[classify] trails called empty sky: {100 * trail_as_empty:.1f}%; empty sky called trail: "
+        f"{100 * np.mean(sc['test']['pred'][y_te == 4] == 3):.1f}%")
     say(f"[classify] known test accuracy {100 * acc:.1f}% (" +
         ", ".join(f"{n} {100 * a:.1f}%" for n, a in zip(CLASSES, per)) + ")")
     SCORES = ["msp", "energy", "mahalanobis"]
@@ -153,16 +173,16 @@ if __name__ == "__main__":
             line.append(f"{name}: AUROC {auc:.3f}, flagged {100 * np.mean(s_u > thr[k]):.0f}%")
         say(f"[ood] {k:11s} " + "; ".join(line))
     for name in unknown:
-        called = np.bincount(sc[name]["pred"], minlength=4) / len(sc[name]["pred"])
+        called = np.bincount(sc[name]["pred"], minlength=5) / len(sc[name]["pred"])
         say(f"[ood] {name} called as: " + ", ".join(f"{n} {100 * c:.0f}%" for n, c in zip(CLASSES, called)))
 
     # ---- leave one out: no cosmic rays in training ----------------------------------------------------
     keep = y_tr != 2
     y3 = y_tr[keep].copy()
-    y3[y3 == 3] = 2
+    y3[y3 > 2] -= 1                                   # trail 3 -> 2, empty sky 4 -> 3
     cr_te = X_te[y_te == 2]
     keep_v, keep_t = y_va != 2, y_te != 2
-    sc3 = fit_and_score(X_tr[keep], y3, 3, {"val": X_va[keep_v], "test": X_te[keep_t], "cosmic ray": cr_te})
+    sc3 = fit_and_score(X_tr[keep], y3, 4, {"val": X_va[keep_v], "test": X_te[keep_t], "cosmic ray": cr_te})
     for k in SCORES:
         t3 = np.quantile(sc3["val"][k], 0.95)
         auc = roc_auc_score(np.r_[np.zeros(keep_t.sum()), np.ones(len(cr_te))],
@@ -170,9 +190,9 @@ if __name__ == "__main__":
         rows[(k, "cosmic ray (held out)")] = (auc, np.mean(sc3["cosmic ray"][k] > t3))
         say(f"[leave-one-out] {k:11s} cosmic rays never seen: AUROC {auc:.3f}, flagged "
             f"{100 * np.mean(sc3['cosmic ray'][k] > t3):.0f}% (known flagged {100 * np.mean(sc3['test'][k] > t3):.1f}%)")
-    called = np.bincount(sc3["cosmic ray"]["pred"], minlength=3) / len(cr_te)
+    called = np.bincount(sc3["cosmic ray"]["pred"], minlength=4) / len(cr_te)
     say("[leave-one-out] held-out cosmic rays called as: " +
-        ", ".join(f"{n} {100 * c:.0f}%" for n, c in zip(["galaxy", "star", "trail"], called)))
+        ", ".join(f"{n} {100 * c:.0f}%" for n, c in zip(LOO_CLASSES, called)))
 
     # ---- figures -------------------------------------------------------------------------------
     ood_sets = list(unknown) + ["cosmic ray (held out)"]
@@ -206,24 +226,23 @@ if __name__ == "__main__":
     fig.savefig(OUT / "step5_ood.png", dpi=140)
 
     # gallery: each unknown set, the classifier's call and the Mahalanobis verdict
-    fig, axes = plt.subplots(4, 7, figsize=(14, 9.4), constrained_layout=True)
-    gsets = [("blended pair", unknown["blended pair"], sc["blended pair"], CLASSES),
-             ("empty sky", unknown["empty sky"], sc["empty sky"], CLASSES),
-             ("uncertain galaxy", unknown["uncertain galaxy"], sc["uncertain galaxy"], CLASSES),
-             ("cosmic ray\n(never trained on)", cr_te, sc3["cosmic ray"], ["galaxy", "star", "trail"])]
-    t_m3 = np.quantile(sc3["val"]["mahalanobis"], 0.95)
-    for row, (name, X, s, names) in enumerate(gsets):
-        t = t_m3 if row == 3 else thr["mahalanobis"]
+    fig, axes = plt.subplots(3, 7, figsize=(14, 7.4), constrained_layout=True)
+    thr3 = {k: np.quantile(sc3["val"][k], 0.95) for k in SCORES}
+    short = {"msp": "softmax", "energy": "energy", "mahalanobis": "Mahal."}
+    gsets = [("blended pair", unknown["blended pair"], sc["blended pair"], CLASSES, thr),
+             ("uncertain galaxy", unknown["uncertain galaxy"], sc["uncertain galaxy"], CLASSES, thr),
+             ("cosmic ray\n(never trained on)", cr_te, sc3["cosmic ray"], LOO_CLASSES, thr3)]
+    for row, (name, X, s, names, t) in enumerate(gsets):
         for c, ax in enumerate(axes[row]):
             ax.imshow(X[c])
-            flag = s["mahalanobis"][c] > t
+            by = [short[k] for k in SCORES if s[k][c] > t[k]]
             ax.set_title(f"called: {names[s['pred'][c]]} (P = {s['pmax'][c]:.2f})\n"
-                         f"{'flagged: unknown' if flag else 'accepted as known'}", fontsize=8)
+                         f"flagged by: {', '.join(by) if by else 'none'}", fontsize=8)
             ax.set_xticks([])
             ax.set_yticks([])
         axes[row, 0].set_ylabel(name, fontsize=9)
-    fig.suptitle("Objects the classifier never trained on: its best guess, and whether the "
-                 "Mahalanobis score flags them")
+    fig.suptitle("Objects the classifier never trained on: its best guess, and which unknown-detection "
+                 "scores flag them (threshold: 5% of known objects)")
     fig.savefig(OUT / "step5_gallery.png", dpi=125)
     (OUT / "step5_log.txt").write_text("\n".join(log) + "\n")
 
