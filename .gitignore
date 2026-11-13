@@ -8,3 +8,4 @@ notes/*.log
 notes/*.out
 .claude/
 notebooks/data/
+notebooks/GalaxyZoo/
