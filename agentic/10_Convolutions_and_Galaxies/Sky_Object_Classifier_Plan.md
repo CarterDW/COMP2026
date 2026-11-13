@@ -180,6 +180,15 @@ if the radius matches the PSF.
   of the composite; recompress the simulations as JPGs if needed.
 - **Colors don't leak.** Retrain with star colors drawn from the *galaxy* c distribution.
   The accuracy should barely change, because morphology is enough.
+- **Brightness doesn't leak.** Galaxy Zoo galaxies are all bright, so real galaxies are
+  *faded* (linear flux scaled by f, with sky noise added back so the noise level is
+  unchanged), and star fluxes are drawn from the faded-galaxy flux distribution. Both
+  classes then have the same brightness distribution by construction, and every image,
+  galaxy or star, passes through the same stretch and JPEG round trip.
+- **Real stars it never saw.** Cut out the 666 real field stars from step 2a, paste them
+  in linear flux onto simulated empty sky, and classify them. Report the fraction called
+  "star", next to the size cut's fraction for the same objects. Control: the same
+  cut-and-paste applied to simulated stars must not change their classification.
 
 *About 45 min.*
 
