@@ -43,6 +43,7 @@ set.
 | 4 | The galaxy head: morphology × color | ~50 min | Accuracy table (color / gray / shuffled); gallery of red spirals and blue ellipticals |
 | 5 | Known or unknown? OOD detection | ~45 min | Score histograms and ROC curves for held-out classes |
 | 6 | Real SDSS stars and quasars *(needs approval for the data pull)* | ~50 min | Classifier trained on simulated stars, tested on real ones; quasars gray vs. color |
+| 7 | Several objects per image: detect-then-classify, then segmentation and blends | ~75 min | Labeled source map over a real cutout; per-pixel segmentation of star + galaxy blends |
 
 **First-hour milestone:** steps 0–1 plus the step-2a gallery. That gives the color
 bimodality of real galaxies, a reproduced 95% CNN, and a picture of every simulated class
@@ -244,7 +245,30 @@ Query SDSS SkyServer for a few thousand spectroscopically classified stars and q
 
 *About 50 min (mostly data).*
 
-**Total:** about 6.5 hours. Steps 1–4 stand alone, and step 6 is optional.
+### 7. Several objects per image
+A classifier gives one label per image. Real survey images hold many objects, and
+some overlap: blending, a major problem for Rubin-era surveys.
+- **(a) Detect, then classify.** Find every source in a cutout (the peak finder in
+  `fieldstars.py`), cut a 40×40 stamp around each, and classify it with the step-3/4
+  networks. *Plot:* real cutouts with every source boxed and labeled.
+- **(b) Segmentation.** Train a small U-Net to label every pixel as sky, galaxy, star
+  or artifact. The training images are composites, simulated stars and artifacts placed
+  on and around real galaxies, so the true pixel map is known exactly. That's something
+  no real data set provides.
+
+*Checks:*
+- **Known neighbors.** The 666 real field stars from step 2a sit next to real
+  galaxies. Detect-then-classify must call them stars at the rate step 3 predicts for
+  their brightness.
+- **Blend separation vs. distance.** Place a star at a known offset from a galaxy's
+  center. Per-pixel accuracy for the star must fall as the offset shrinks toward the
+  PSF width. Report the offset where the star is lost.
+- **Flux bookkeeping.** In a blend, flux summed over the pixels labeled star, in linear
+  units, recovers the injected star flux within its noise.
+
+*About 75 min.*
+
+**Total:** about 7.5 hours. Steps 1–4 stand alone, and step 6 is optional.
 
 ## Push Harder
 

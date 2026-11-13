@@ -1,0 +1,13 @@
+[stretch] max |stretch(unstretch(v)) - v| on unclipped pixels: 1.14e-13
+[flux] max |grid sum - analytic flux within r = 600 px|: 1.73e-07
+[global] A = 25, beta = 4.5 (best of a 63-point grid)
+[PSF] 666 field stars: FWHM median 5.14 px, 16-84%: 4.10-6.42
+[PSF] Spearman(central galaxy size, star FWHM) = -0.08 (p = 4.3e-02)
+[color] star (i, r, g) fractions, median: [1.13 1.   0.86]
+[sky] 300 backgrounds, 721 clean real corners
+[sky]   real, all corner pixels: mean [7.06 6.61 4.35], std [4.91 4.58 3.92]
+[sky]   real, clean corners    : mean [6.97 6.55 4.3 ], std [4.36 4.14 3.76]
+[sky]   empty_sky              : mean [6.73 6.38 4.23], std [4.38 4.14 3.76]
+[sky] block scatter median: real corners 1.77, empty_sky 1.85; 99th pct 3.7 vs 3.0
+[inject] recovered/injected - 1: FWHM median -0.004 (16-84 -0.038..+0.050), flux median -0.001 (16-84 -0.069..+0.080)
+PASS: stretch inverse, flux bookkeeping, unbiased injection-recovery, sky level, noise and patchiness match.

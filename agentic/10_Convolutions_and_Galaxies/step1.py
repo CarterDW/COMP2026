@@ -62,29 +62,32 @@ fig.savefig(OUT / "step1_color_strip.png", dpi=150)
 # --- notebook 10's CNN, at 60x60 (control) and 120x120 -------------------------------
 y = torch.tensor(labels)
 SEEDS = range(5)
+CONFIGS = [(60, 2), (120, 2), (120, 3)]          # (image size, conv blocks)
 results, finals = {}, {}
-for size in [60, 120]:
+for size, blocks in CONFIGS:
     imgs = images if size == 120 else images.reshape(-1, 60, 2, 60, 2, 3).mean(axis=(2, 4))
     x_all = torch.tensor(imgs, dtype=torch.float32).permute(0, 3, 1, 2) / 255.0
     mean, std = x_all[train_idx].mean(), x_all[train_idx].std()
     x = (x_all - mean) / std
-    finals[size] = []
+    key = (size, blocks)
+    finals[key] = []
     for seed in SEEDS:
         torch.manual_seed(seed)
-        net = models.cnn(size=size)
-        print(f"\nCNN at {size}x{size}, seed {seed}: {models.n_params(net):,} parameters")
+        net = models.cnn(size=size, blocks=blocks)
+        print(f"\nCNN {size}x{size}, {blocks} blocks, seed {seed}: {models.n_params(net):,} parameters")
         hist = models.train(net, x[train_idx], y[train_idx], x[test_idx], y[test_idx], seed=seed)
-        finals[size].append(hist[-1])
+        finals[key].append(hist[-1])
         if seed == 0:
-            results[size] = (models.n_params(net), hist)
-    f = 100 * np.array(finals[size])
-    print(f"CNN {size}x{size} over {len(f)} seeds: {f.mean():.1f} +/- {f.std(ddof=1):.1f}%  ({np.round(f, 1)})")
+            results[key] = (models.n_params(net), hist)
+    f = 100 * np.array(finals[key])
+    print(f"CNN {size}x{size}, {blocks} blocks, over {len(f)} seeds: "
+          f"{f.mean():.1f} +/- {f.std(ddof=1):.1f}%  ({np.round(f, 1)})")
 
 fig, ax = plt.subplots(figsize=(5.5, 3.5))
 ep = np.arange(1, 16)
-for size, mk in [(60, "o-"), (120, "s-")]:
-    p, h = results[size]
-    ax.plot(ep, 100 * np.array(h), mk, label=f"CNN {size}x{size}, {p:,} params")
+for key, mk in zip(CONFIGS, ["o-", "s-", "^-"]):
+    p, h = results[key]
+    ax.plot(ep, 100 * np.array(h), mk, label=f"CNN {key[0]}x{key[0]}, {key[1]} blocks, {p:,} params")
 ax.axhline(100 * color_acc, c="tab:red", ls="--", label="one color cut")
 ax.axhline(100 * baseline, c="k", ls=":", label="always say spiral")
 ax.set_xlabel("epoch")
@@ -95,13 +98,16 @@ fig.savefig(OUT / "step1_cnn.png", dpi=150)
 
 # --- checks --------------------------------------------------------------------------
 print()
-assert results[60][0] == 8434, "the 60x60 CNN should match notebook 10's 8,434 parameters"
+assert results[(60, 2)][0] == 8434, "the 60x60 CNN should match notebook 10's 8,434 parameters"
 assert np.median(c[labels == 1]) > np.median(c[labels == 0]), "ellipticals should be redder"
 assert color_acc > baseline + 0.05, "a color cut alone should clearly beat the baseline"
 m_sp, m_el, m_un = (np.median(c[labels == k]) for k in range(3))
 assert m_sp < m_un < m_el, "uncertain galaxies should sit between the classes in color"
 # one test set of 400 has sampling error ~1.2 pt, so compare seed means, not single runs
-gap = 100 * (np.mean(finals[60]) - np.mean(finals[120]))
-print(f"60x60 minus 120x120, seed means: {gap:+.1f} pt")
-assert abs(gap) < 1.5, "120x120 should match 60x60 within 1.5 pt on the seed mean"
-print("PASS: parameter count, color ordering, color-cut baseline, uncertain in between, 120 ~ 60.")
+for key in [(120, 2), (120, 3)]:
+    gap = 100 * (np.mean(finals[(60, 2)]) - np.mean(finals[key]))
+    print(f"60x60 minus {key[0]}x{key[0]} with {key[1]} blocks, seed means: {gap:+.1f} pt")
+gap3 = 100 * (np.mean(finals[(60, 2)]) - np.mean(finals[(120, 3)]))
+assert abs(gap3) < 1.5, "the 3-block 120x120 CNN should match 60x60 within 1.5 pt on the seed mean"
+print("PASS: parameter count, color ordering, color-cut baseline, uncertain in between, "
+      "3-block 120 ~ 60.")

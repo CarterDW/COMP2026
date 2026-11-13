@@ -6,14 +6,20 @@ torch.backends.cudnn.deterministic = True    # same seed, same numbers
 torch.backends.cudnn.benchmark = False
 
 
-def cnn(in_ch=3, n_out=2, size=120):
-    """Notebook 10's CNN. The last Linear's input comes from the size formula:
-    conv5 (no padding): H -> H - 4;  MaxPool2d(2): H -> floor(H / 2)."""
-    h = ((size - 4) // 2 - 4) // 2          # 120 -> 116 -> 58 -> 54 -> 27
-    return torch.nn.Sequential(
-        torch.nn.Conv2d(in_ch, 8, 5), torch.nn.ReLU(), torch.nn.MaxPool2d(2),
-        torch.nn.Conv2d(8, 16, 5), torch.nn.ReLU(), torch.nn.MaxPool2d(2),
-        torch.nn.Flatten(), torch.nn.Linear(16 * h * h, n_out))
+def cnn(in_ch=3, n_out=2, size=120, blocks=3):
+    """Conv(5x5) -> ReLU -> MaxPool2d(2) blocks with 8, 16, 32 channels, then one Linear.
+
+    blocks=2 is notebook 10's CNN. The last Linear's input comes from the size formula:
+    conv5 (no padding): H -> H - 4;  MaxPool2d(2): H -> floor(H / 2).
+    At 120: 120 -> 116 -> 58 -> 54 -> 27 -> 23 -> 11.
+    """
+    channels = [in_ch, 8, 16, 32][:blocks + 1]
+    layers, h = [], size
+    for c_in, c_out in zip(channels[:-1], channels[1:]):
+        layers += [torch.nn.Conv2d(c_in, c_out, 5), torch.nn.ReLU(), torch.nn.MaxPool2d(2)]
+        h = (h - 4) // 2
+    return torch.nn.Sequential(*layers, torch.nn.Flatten(),
+                               torch.nn.Linear(channels[-1] * h * h, n_out))
 
 
 def n_params(model):

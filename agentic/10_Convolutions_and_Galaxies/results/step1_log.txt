@@ -5,7 +5,7 @@ c for elliptical: median +0.845, 16-84%: +0.591 .. +1.150
 c for uncertain : median +0.579, 16-84%: +0.181 .. +0.839
 color cut c > +0.900 => elliptical: test accuracy 84.8%
 
-CNN at 60x60, seed 0: 8,434 parameters
+CNN 60x60, 2 blocks, seed 0: 8,434 parameters
 epoch  1: test accuracy 86.8%
 epoch  2: test accuracy 89.5%
 epoch  3: test accuracy 90.5%
@@ -22,7 +22,7 @@ epoch 13: test accuracy 94.2%
 epoch 14: test accuracy 93.8%
 epoch 15: test accuracy 93.8%
 
-CNN at 60x60, seed 1: 8,434 parameters
+CNN 60x60, 2 blocks, seed 1: 8,434 parameters
 epoch  1: test accuracy 89.2%
 epoch  2: test accuracy 87.7%
 epoch  3: test accuracy 90.5%
@@ -39,7 +39,7 @@ epoch 13: test accuracy 93.8%
 epoch 14: test accuracy 94.2%
 epoch 15: test accuracy 94.5%
 
-CNN at 60x60, seed 2: 8,434 parameters
+CNN 60x60, 2 blocks, seed 2: 8,434 parameters
 epoch  1: test accuracy 83.7%
 epoch  2: test accuracy 87.5%
 epoch  3: test accuracy 88.2%
@@ -56,7 +56,7 @@ epoch 13: test accuracy 94.7%
 epoch 14: test accuracy 92.8%
 epoch 15: test accuracy 94.2%
 
-CNN at 60x60, seed 3: 8,434 parameters
+CNN 60x60, 2 blocks, seed 3: 8,434 parameters
 epoch  1: test accuracy 87.3%
 epoch  2: test accuracy 85.3%
 epoch  3: test accuracy 90.0%
@@ -73,7 +73,7 @@ epoch 13: test accuracy 93.8%
 epoch 14: test accuracy 93.5%
 epoch 15: test accuracy 93.8%
 
-CNN at 60x60, seed 4: 8,434 parameters
+CNN 60x60, 2 blocks, seed 4: 8,434 parameters
 epoch  1: test accuracy 80.5%
 epoch  2: test accuracy 89.7%
 epoch  3: test accuracy 88.7%
@@ -89,9 +89,9 @@ epoch 12: test accuracy 93.5%
 epoch 13: test accuracy 94.0%
 epoch 14: test accuracy 93.3%
 epoch 15: test accuracy 93.3%
-CNN 60x60 over 5 seeds: 93.9 +/- 0.5%  ([93.8 94.5 94.2 93.8 93.3])
+CNN 60x60, 2 blocks, over 5 seeds: 93.9 +/- 0.5%  ([93.8 94.5 94.2 93.8 93.3])
 
-CNN at 120x120, seed 0: 27,154 parameters
+CNN 120x120, 2 blocks, seed 0: 27,154 parameters
 epoch  1: test accuracy 82.0%
 epoch  2: test accuracy 86.8%
 epoch  3: test accuracy 90.8%
@@ -108,7 +108,7 @@ epoch 13: test accuracy 92.0%
 epoch 14: test accuracy 91.8%
 epoch 15: test accuracy 91.0%
 
-CNN at 120x120, seed 1: 27,154 parameters
+CNN 120x120, 2 blocks, seed 1: 27,154 parameters
 epoch  1: test accuracy 86.3%
 epoch  2: test accuracy 89.7%
 epoch  3: test accuracy 91.8%
@@ -125,7 +125,7 @@ epoch 13: test accuracy 92.3%
 epoch 14: test accuracy 93.0%
 epoch 15: test accuracy 92.5%
 
-CNN at 120x120, seed 2: 27,154 parameters
+CNN 120x120, 2 blocks, seed 2: 27,154 parameters
 epoch  1: test accuracy 82.0%
 epoch  2: test accuracy 84.0%
 epoch  3: test accuracy 87.5%
@@ -142,7 +142,7 @@ epoch 13: test accuracy 93.3%
 epoch 14: test accuracy 94.2%
 epoch 15: test accuracy 94.0%
 
-CNN at 120x120, seed 3: 27,154 parameters
+CNN 120x120, 2 blocks, seed 3: 27,154 parameters
 epoch  1: test accuracy 84.8%
 epoch  2: test accuracy 90.5%
 epoch  3: test accuracy 90.2%
@@ -159,7 +159,7 @@ epoch 13: test accuracy 91.8%
 epoch 14: test accuracy 92.0%
 epoch 15: test accuracy 92.5%
 
-CNN at 120x120, seed 4: 27,154 parameters
+CNN 120x120, 2 blocks, seed 4: 27,154 parameters
 epoch  1: test accuracy 77.2%
 epoch  2: test accuracy 88.7%
 epoch  3: test accuracy 90.8%
@@ -175,7 +175,94 @@ epoch 12: test accuracy 94.0%
 epoch 13: test accuracy 94.0%
 epoch 14: test accuracy 93.8%
 epoch 15: test accuracy 94.5%
-CNN 120x120 over 5 seeds: 92.9 +/- 1.4%  ([91.  92.5 94.  92.5 94.5])
+CNN 120x120, 2 blocks, over 5 seeds: 92.9 +/- 1.4%  ([91.  92.5 94.  92.5 94.5])
 
-60x60 minus 120x120, seed means: +1.0 pt
-PASS: parameter count, color ordering, color-cut baseline, uncertain in between, 120 ~ 60.
+CNN 120x120, 3 blocks, seed 0: 24,402 parameters
+epoch  1: test accuracy 78.8%
+epoch  2: test accuracy 87.3%
+epoch  3: test accuracy 90.0%
+epoch  4: test accuracy 89.5%
+epoch  5: test accuracy 92.0%
+epoch  6: test accuracy 92.8%
+epoch  7: test accuracy 93.0%
+epoch  8: test accuracy 87.0%
+epoch  9: test accuracy 90.5%
+epoch 10: test accuracy 92.8%
+epoch 11: test accuracy 93.8%
+epoch 12: test accuracy 94.0%
+epoch 13: test accuracy 93.0%
+epoch 14: test accuracy 93.5%
+epoch 15: test accuracy 95.2%
+
+CNN 120x120, 3 blocks, seed 1: 24,402 parameters
+epoch  1: test accuracy 86.0%
+epoch  2: test accuracy 87.0%
+epoch  3: test accuracy 88.7%
+epoch  4: test accuracy 91.8%
+epoch  5: test accuracy 91.3%
+epoch  6: test accuracy 91.8%
+epoch  7: test accuracy 92.5%
+epoch  8: test accuracy 91.0%
+epoch  9: test accuracy 92.8%
+epoch 10: test accuracy 93.5%
+epoch 11: test accuracy 93.8%
+epoch 12: test accuracy 93.3%
+epoch 13: test accuracy 93.8%
+epoch 14: test accuracy 94.7%
+epoch 15: test accuracy 94.2%
+
+CNN 120x120, 3 blocks, seed 2: 24,402 parameters
+epoch  1: test accuracy 81.0%
+epoch  2: test accuracy 88.0%
+epoch  3: test accuracy 88.7%
+epoch  4: test accuracy 93.3%
+epoch  5: test accuracy 92.3%
+epoch  6: test accuracy 93.0%
+epoch  7: test accuracy 92.3%
+epoch  8: test accuracy 93.8%
+epoch  9: test accuracy 94.0%
+epoch 10: test accuracy 93.3%
+epoch 11: test accuracy 93.5%
+epoch 12: test accuracy 95.2%
+epoch 13: test accuracy 91.3%
+epoch 14: test accuracy 94.7%
+epoch 15: test accuracy 94.7%
+
+CNN 120x120, 3 blocks, seed 3: 24,402 parameters
+epoch  1: test accuracy 81.2%
+epoch  2: test accuracy 89.2%
+epoch  3: test accuracy 90.5%
+epoch  4: test accuracy 92.5%
+epoch  5: test accuracy 91.0%
+epoch  6: test accuracy 93.0%
+epoch  7: test accuracy 92.3%
+epoch  8: test accuracy 94.0%
+epoch  9: test accuracy 92.5%
+epoch 10: test accuracy 94.7%
+epoch 11: test accuracy 94.7%
+epoch 12: test accuracy 93.5%
+epoch 13: test accuracy 93.3%
+epoch 14: test accuracy 95.0%
+epoch 15: test accuracy 93.5%
+
+CNN 120x120, 3 blocks, seed 4: 24,402 parameters
+epoch  1: test accuracy 83.5%
+epoch  2: test accuracy 82.2%
+epoch  3: test accuracy 93.3%
+epoch  4: test accuracy 91.8%
+epoch  5: test accuracy 92.3%
+epoch  6: test accuracy 85.8%
+epoch  7: test accuracy 93.0%
+epoch  8: test accuracy 93.5%
+epoch  9: test accuracy 93.0%
+epoch 10: test accuracy 93.3%
+epoch 11: test accuracy 94.0%
+epoch 12: test accuracy 92.5%
+epoch 13: test accuracy 94.2%
+epoch 14: test accuracy 94.2%
+epoch 15: test accuracy 94.5%
+CNN 120x120, 3 blocks, over 5 seeds: 94.4 +/- 0.6%  ([95.2 94.2 94.7 93.5 94.5])
+
+60x60 minus 120x120 with 2 blocks, seed means: +1.0 pt
+60x60 minus 120x120 with 3 blocks, seed means: -0.5 pt
+PASS: parameter count, color ordering, color-cut baseline, uncertain in between, 3-block 120 ~ 60.
