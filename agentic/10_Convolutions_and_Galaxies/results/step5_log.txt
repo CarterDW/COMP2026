@@ -1,0 +1,12 @@
+[data] train 6094, validation 1500, known test 1597; blended pair 400, empty sky 400, uncertain galaxy 600
+[classify] known test accuracy 99.1% (galaxy 99.0%, star 98.7%, cosmic ray 99.3%, trail 100.0%)
+[ood] msp         known test flagged 5.2%; blended pair: AUROC 0.717, flagged 10%; empty sky: AUROC 0.730, flagged 2%; uncertain galaxy: AUROC 0.870, flagged 23%
+[ood] energy      known test flagged 5.9%; blended pair: AUROC 0.784, flagged 22%; empty sky: AUROC 0.783, flagged 2%; uncertain galaxy: AUROC 0.859, flagged 18%
+[ood] mahalanobis known test flagged 7.2%; blended pair: AUROC 0.816, flagged 14%; empty sky: AUROC 0.193, flagged 4%; uncertain galaxy: AUROC 0.430, flagged 3%
+[ood] blended pair called as: galaxy 99%, star 0%, cosmic ray 0%, trail 0%
+[ood] empty sky called as: galaxy 0%, star 0%, cosmic ray 0%, trail 100%
+[ood] uncertain galaxy called as: galaxy 94%, star 6%, cosmic ray 0%, trail 0%
+[leave-one-out] msp         cosmic rays never seen: AUROC 0.795, flagged 38% (known flagged 4.8%)
+[leave-one-out] energy      cosmic rays never seen: AUROC 0.684, flagged 8% (known flagged 5.1%)
+[leave-one-out] mahalanobis cosmic rays never seen: AUROC 0.580, flagged 6% (known flagged 8.0%)
+[leave-one-out] held-out cosmic rays called as: galaxy 0%, star 57%, trail 42%
