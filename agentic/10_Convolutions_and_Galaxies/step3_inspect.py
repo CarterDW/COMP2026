@@ -50,7 +50,7 @@ if __name__ == "__main__":
     # ---- sky --------------------------------------------------------------------------
     rows, sky = load("sky")
     blank = sky.reshape(len(sky), -1).std(1) < 1
-    masks = [sims.object_mask(v, 2.0, 8) for v in sky]
+    masks = [sims.detected_sources(v) for v in sky]
     centre_clean = np.array([not (m & (R < 20)).any() for m in masks])
     ok = ~blank & centre_clean
     print(f"sky: {len(sky)} frames; blank {blank.sum()}; centre clean {centre_clean.sum()}; usable {ok.sum()}")
@@ -60,5 +60,5 @@ if __name__ == "__main__":
     for ax, k in zip(axes.flat, np.flatnonzero(ok)[:16]):
         ax.imshow(sky[k])
         ax.axis("off")
-    fig.suptitle("Real SDSS sky backgrounds (nothing detected within 20 px of the centre)")
+    fig.suptitle("Real SDSS sky backgrounds (no 5-sigma source within 20 px of the centre)")
     fig.savefig(OUT / "step3_sdss_sky.png", dpi=130)

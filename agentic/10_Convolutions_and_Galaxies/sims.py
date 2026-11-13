@@ -143,6 +143,19 @@ def object_mask(v, nsig=3.0, grow=4):
     return ndimage.binary_dilation(g > sky + nsig * sig, iterations=grow)
 
 
+def detected_sources(v, nsig=5.0, min_area=10):
+    """Pixels of detected sources: >= min_area connected pixels above sky + nsig sigma on
+    the lightly smoothed channel mean. (object_mask's 2-sigma, grow-8 mask is meant for
+    excluding faint light, and on empty sky it flags noise; this one is for detection.
+    On pixel-shuffled, source-free frames it fires within r < 20 px about 8% of the time.)"""
+    g = ndimage.gaussian_filter(v.astype(float).mean(axis=-1), 1.0)
+    sky = np.median(g)
+    sig = 1.4826 * np.median(np.abs(g - sky))
+    lab, n = ndimage.label(g > sky + nsig * sig)
+    sizes = ndimage.sum(np.ones_like(g), lab, range(1, n + 1))
+    return np.isin(lab, 1 + np.flatnonzero(sizes >= min_area))
+
+
 def block_scatter(v, block=8):
     """Std of the 8x8 block means of the channel-mean image: large means patchy sky."""
     g = v.astype(float).mean(axis=-1)
