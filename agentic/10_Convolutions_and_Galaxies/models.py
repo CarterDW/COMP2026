@@ -22,6 +22,58 @@ def cnn(in_ch=3, n_out=2, size=120, blocks=3):
                                torch.nn.Linear(channels[-1] * h * h, n_out))
 
 
+class TwoHead(torch.nn.Module):
+    """A shared conv trunk (the cnn() blocks, flattened) with two 2-way heads."""
+
+    def __init__(self, in_ch=3, size=120, blocks=3):
+        super().__init__()
+        full = cnn(in_ch=in_ch, size=size, blocks=blocks)
+        self.trunk = torch.nn.Sequential(*list(full)[:-1])           # everything but the Linear
+        n_feat = full[-1].in_features
+        self.morph = torch.nn.Linear(n_feat, 2)
+        self.color = torch.nn.Linear(n_feat, 2)
+
+    def forward(self, x):
+        h = self.trunk(x)
+        return self.morph(h), self.color(h)
+
+
+def train_two_head(model, x, y_morph, y_color, n_epochs=15, batch_size=64, lr=1e-3, seed=0):
+    """Both heads trained together: loss = CE(morphology) + CE(color)."""
+    torch.manual_seed(seed)
+    model.to(DEVICE)
+    x, ym, yc = x.to(DEVICE), y_morph.to(DEVICE), y_color.to(DEVICE)
+    ce = torch.nn.CrossEntropyLoss()
+    opt = torch.optim.Adam(model.parameters(), lr=lr)
+    for _ in range(n_epochs):
+        order = torch.randperm(len(x), device=DEVICE)
+        for s in range(0, len(x), batch_size):
+            b = order[s:s + batch_size]
+            opt.zero_grad()
+            pm, pc = model(x[b])
+            (ce(pm, ym[b]) + ce(pc, yc[b])).backward()
+            opt.step()
+    return model
+
+
+def predict_two_head(model, x, batch=500, d4=False):
+    """Softmax P(class 1) for both heads. d4=True averages the logits over the 8
+    rotations and reflections of the square, which makes the output exactly D4-invariant."""
+    model.eval()
+    outs_m, outs_c = [], []
+    with torch.no_grad():
+        for i in range(0, len(x), batch):
+            xb = x[i:i + batch].to(DEVICE)
+            views = [xb] if not d4 else [torch.rot90(v, k, dims=(2, 3)) for v in (xb, xb.flip(3))
+                                         for k in range(4)]
+            lm = torch.stack([model(v)[0] for v in views]).mean(0)
+            lc = torch.stack([model(v)[1] for v in views]).mean(0)
+            outs_m.append(torch.softmax(lm, 1)[:, 1].cpu())
+            outs_c.append(torch.softmax(lc, 1)[:, 1].cpu())
+    model.train()
+    return torch.cat(outs_m).numpy(), torch.cat(outs_c).numpy()
+
+
 def n_params(model):
     return sum(p.numel() for p in model.parameters())
 

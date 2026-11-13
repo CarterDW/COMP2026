@@ -127,8 +127,29 @@ def galaxy_rows():
     return rows
 
 
+def galaxy_photometry():
+    """SDSS model magnitudes (u, g, r) and spectroscopic redshift for every Galaxy Zoo
+    galaxy, keyed by DR7 id. Catalog numbers only, no images."""
+    images, labels, ids = data.load()
+    rows = []
+    for k in range(0, len(ids), 50):
+        chunk = ",".join(ids[k:k + 50])
+        rows += sql(f"select d.dr7objid, p.modelMag_u, p.modelMag_g, p.modelMag_r, s.z "
+                    f"from PhotoObjDR7 d join PhotoObj p on d.dr8objid = p.objid "
+                    f"left join SpecObj s on s.bestobjid = p.objid "
+                    f"where d.dr7objid in ({chunk})")
+    OUT.mkdir(parents=True, exist_ok=True)
+    with open(OUT / "galaxy_photometry.csv", "w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=list(rows[0]))
+        w.writeheader()
+        w.writerows(rows)
+    print(f"galaxy photometry: {len(rows)} rows for {len(ids)} galaxies")
+
+
 if __name__ == "__main__":
     what = sys.argv[1:] or ["stars", "sky"]
+    if "photometry" in what:
+        galaxy_photometry()
     if "galaxies" in what:
         fetch_all(galaxy_rows(), OUT / "galaxies")
     if "stars" in what:

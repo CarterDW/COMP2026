@@ -215,6 +215,16 @@ spirals, blue ellipticals); the morphology head's confusion matrix.
 
 *About 50 min.*
 
+*As run (2026-11-13):*
+- **Color labels:** SDSS u − r, cut at 2.22 (Strateva et al. 2001), instead of the
+  image-color cut. The image-color cut was tuned on morphology, which made the label
+  circular. The whole-sample u − r dip sits at 2.23.
+- **Revised checks:** "shuffled ≈ color cut" was a wrong premise, because the pixel-value
+  histogram still carries concentration. "Shape-only errors concentrate on red spirals"
+  was wrong too: 57% of spirals are red in observed u − r, mostly dusty edge-on disks,
+  which shape can see. These were replaced by "spatial structure helps" and the
+  inclination test (red spirals have lower b/a).
+
 ### 5. Known or unknown?
 The **known** classes are galaxies, stars, cosmic rays and trails. **Unknown** classes
 are held out of training entirely: diffraction spikes, the uncertain galaxies, and one

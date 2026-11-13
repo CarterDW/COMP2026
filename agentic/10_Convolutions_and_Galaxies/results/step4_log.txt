@@ -1,0 +1,16 @@
+[labels] u - r for 4949 galaxies; whole-sample histogram minimum between the peaks at 2.23 (Strateva cut 2.22)
+[labels] spirals: 57% red (u - r > 2.22); n = 1470
+[labels] ellipticals: 99% red (u - r > 2.22); n = 521
+[labels] train 1594, test 397 confident galaxies with u - r
+[baseline] morph: always spiral: 75.8%
+[baseline] morph: image-color cut: 84.6%
+[baseline] color: always majority: 66.0%
+[baseline] color: from morphology label: 58.2%
+[color   ] morphology 92.2 +/- 0.9%, color 92.4 +/- 0.4%
+[gray    ] morphology 92.4 +/- 0.9%, color 78.3 +/- 1.4%
+[shuffled] morphology 89.9 +/- 1.3%, color 90.3 +/- 0.3%
+[shape->color] grayscale color-head error: 26.4% on typical galaxies (blue spirals, red ellipticals; n = 231), 11.4% on red spirals and blue ellipticals (n = 166)
+[inclination] spirals' axis ratio b/a: red median 0.63, blue median 0.74 (Mann-Whitney p = 1.1e-14)
+[inclination] red fraction of spirals by b/a quintile (edge-on -> face-on): 67% 69% 58% 48% 43%
+[inclination] test spirals: Spearman(b/a, shape-only P(red)) = -0.24 (p = 2.4e-05)
+[rotation] morphology accuracy: original 92.4%, rotated 90 deg 92.7%, D4-averaged 92.7%; D4 model's max output change over the 8 views 3.0e-06
