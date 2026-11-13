@@ -26,8 +26,9 @@ SD = data.NB / "data" / "sdss_week10"
 F_MIN = 0.02
 cal = np.load(OUT / "step2a_calibration.npz")
 A = float(cal["A"])
-FWHM_REAL = np.load(OUT / "step3_sdss_star_fwhm.npz")["fwhm"]   # real SDSS star widths
-bank = dict(np.load(OUT / "step2b_psf_bank.npz"))
+FWHM_REAL = np.load(OUT / "step3_calibration.npz")["fwhm"]           # DR16 star widths (A = 25, beta = 3.5)
+bank = dict(np.load(OUT / "step3_psf_bank_v2.npz"))                  # halo, no vanes (step3_psffix)
+FIX = np.load(OUT / "step3_psffix.npz")                             # JPG color mapping
 images, labels, ids = data.load()
 QT = Image.open(data.DIR / f"{ids[0]}.jpg").quantization
 yy, xx = np.mgrid[:sims.N, :sims.N] - (sims.N - 1) / 2
@@ -127,7 +128,8 @@ def build(gal_idx, sky, real_stars, n_sim, rng, star_colors="blackbody"):
         gal_cols = np.array(gal_cols)
     for _ in range(n_sim):
         F = target()
-        col = (o.blackbody_fractions(np.exp(rng.uniform(np.log(3000), np.log(12000))))
+        col = (sims.image_colors(o.blackbody_fractions(np.exp(rng.uniform(np.log(3000), np.log(12000)))),
+                                 FIX["color_offset"], FIX["color_slope"])
                if gal_cols is None else gal_cols[rng.integers(len(gal_cols))])
         u = linear(sky[rng.integers(len(sky))]) + sims.star_from_bank(
             rng, bank, FWHM_REAL[rng.integers(len(FWHM_REAL))], F, col)

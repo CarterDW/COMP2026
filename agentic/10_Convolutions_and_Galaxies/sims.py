@@ -120,6 +120,17 @@ def flicker_trail(rng, fwhm, flux_per_px, depth=0.6):
     return u * (1 + depth * np.sin(2 * np.pi * along / period + phase))[..., None]
 
 
+def image_colors(f_irg, offset, slope):
+    """Catalog (or blackbody) band fluxes (..., 3) in (i, r, g) -> channel fractions in the
+    JPG, summing to 3. Fit on real stars in step3_psffix: ln(s_c/s_r) = offset_c + slope_c
+    ln(f_c/f_r), so the JPG both rescales and compresses colors."""
+    f = np.asarray(f_irg, float)
+    x = np.log(f / f[..., [1]])
+    y = np.asarray(offset) + np.asarray(slope) * x            # r entries: 0 + 1 * 0
+    s = np.exp(y)
+    return 3 * s / s.sum(axis=-1, keepdims=True)
+
+
 def star_from_bank(rng, bank, fwhm_px, flux, color):
     """Level 2: a star from the optics PSF bank: (i, r, g) PSFs at the nearest FWHM and
     a random subpixel phase, shifted by a random whole number of pixels (|shift| <= 2)."""

@@ -1,0 +1,10 @@
+[gains] 734 unsaturated stars: median image/catalog gains (i, r, g) relative to r = [0.791 1.    1.393]; image ln(g/i) vs catalog ln(g/i) slope 0.814: the JPG compresses colors
+[colors] map ln(s_c/s_r) = offset + slope ln(f_c/f_r): i -0.187 + 0.837 x, g +0.227 + 0.813 x
+[colors] held-out stars, rms error in ln(channel fraction): catalog colors as-is 0.347, gains only 0.124, offset + slope 0.088
+[halo] best eps = 0.1, halo FWHM = 7.0 px, beta = 2.0; chi^2 4.97e+05 vs 6.26e+05 with no halo (1215 bright stars, r = 6-25 px)
+[vanes]    0 mm: simulated axis/diagonal 1.037  (real 1.031)
+[vanes]    2 mm: simulated axis/diagonal 1.091  (real 1.031)
+[vanes]    5 mm: simulated axis/diagonal 1.091  (real 1.031)
+[vanes]   10 mm: simulated axis/diagonal 1.148  (real 1.031)
+[vanes]   20 mm: simulated axis/diagonal 1.100  (real 1.031)
+[vanes] chosen vane width 0 mm (step 2b assumed 20 mm)

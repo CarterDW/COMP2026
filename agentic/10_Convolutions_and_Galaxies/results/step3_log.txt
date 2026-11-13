@@ -7,13 +7,13 @@
 [leak] DR16 galaxy-frame corners vs SDSS sky corners: 65.7% (chance 50 +/- 1.0)
 [leak] control, SDSS sky vs SDSS sky: 49.9% (chance 50 +/- 1.4)
 [accuracy]                                    galaxies   sim stars   real stars
-[accuracy] CNN trained on sim stars              99.7%      97.2%      73.5%
-[accuracy] CNN trained on real stars             99.2%      83.2%      95.3%
-[accuracy] size cut (r_rms < 4.60 px)            95.0%      85.2%      78.7%
-[by flux] CNN trained on sim stars vs galaxies+real stars:  96.9  90.5  93.7  92.3  89.9  83.3  81.6
-[by flux] CNN trained on sim stars vs galaxies+sim stars:  98.3  99.1  98.6 100.0  98.7  99.5  97.0
+[accuracy] CNN trained on sim stars              99.0%      99.3%      82.3%
+[accuracy] CNN trained on real stars             99.2%      83.8%      95.3%
+[accuracy] size cut (r_rms < 4.62 px)            94.9%      83.0%      79.5%
+[by flux] CNN trained on sim stars vs galaxies+real stars:  95.2  93.2  90.8  90.5  94.7  89.7  94.9
+[by flux] CNN trained on sim stars vs galaxies+sim stars:  99.6  99.5  99.1  99.1  99.1  99.1  98.3
 [by flux] CNN trained on real stars vs galaxies+real stars:  98.2  96.4  98.3  96.4  98.7  97.4  98.6
-[by flux] CNN trained on real stars vs galaxies+sim stars:  94.4  97.7  95.0  96.1  94.8  91.8  82.4
-[by flux] size cut (r_rms < 4.60 px) vs galaxies+real stars:  91.2  87.4  90.4  89.6  89.5  87.6  86.2
-[by flux] size cut (r_rms < 4.60 px) vs galaxies+sim stars:  89.6  90.9  92.3  93.1  90.1  93.6  89.7
-[colors] sim stars with galaxy colors: 98.9% on galaxies+sim stars (blackbody colors: 98.7%)
+[by flux] CNN trained on real stars vs galaxies+sim stars:  95.7  97.7  93.2  95.7  93.1  91.8  86.7
+[by flux] size cut (r_rms < 4.62 px) vs galaxies+real stars:  91.2  87.4  90.4  90.5  89.9  87.2  87.1
+[by flux] size cut (r_rms < 4.62 px) vs galaxies+sim stars:  88.7  89.1  90.9  91.8  91.4  92.7  88.4
+[colors] sim stars with galaxy colors: 98.0% on galaxies+sim stars (blackbody colors: 99.1%)
