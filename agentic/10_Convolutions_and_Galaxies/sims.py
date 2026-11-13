@@ -2,10 +2,10 @@
 
 Pixel model (Lupton et al. 2004, color-preserving asinh):
     I   = mean over channels of the linear flux u_c
-    v_c = clip(A * asinh(I) / I * u_c, 0, 255)
-so the channel mean is mean(v) = A * asinh(I). The inverse is exact for unclipped
+    v_c = A * asinh(I) / I * u_c,  then scaled down so max_c v_c <= 255 (color kept)
+so the channel mean is mean(v) = A * asinh(I). The inverse is exact for unsaturated
 pixels: I = sinh(mean(v) / A), u_c = v_c * I / mean(v). Flux is in units where the
-asinh softening is 1, and A is fit to field stars in step 2a.
+asinh softening is 1; A = 25 from step 2a, confirmed on DR16 catalog fluxes in step 3.
 """
 import io
 
@@ -17,11 +17,21 @@ N = 120
 
 
 # --- the stretch ---------------------------------------------------------------------
-def stretch(u, A):
-    """Linear flux (..., 3) -> pixel values (..., 3), floats in [0, 255]."""
+def stretch(u, A, color_saturation=True):
+    """Linear flux (..., 3) -> pixel values (..., 3), floats in [0, 255].
+
+    Saturation is color-preserving, as in Lupton et al. (2004) and the SDSS JPGs: where
+    the brightest channel would pass 255, all three are scaled down by the same factor,
+    so a saturated star keeps its color. color_saturation=False clips each channel on
+    its own (the step-2 behaviour, which turns saturated cores white).
+    """
     I = u.mean(axis=-1, keepdims=True)
     gain = np.where(I > 0, A * np.arcsinh(I) / np.where(I > 0, I, 1), A)
-    return np.clip(u * gain, 0, 255)
+    v = np.clip(u * gain, 0, None)
+    if color_saturation:
+        peak = v.max(axis=-1, keepdims=True)
+        v = v * np.where(peak > 255, 255 / np.where(peak > 255, peak, 1), 1)
+    return np.clip(v, 0, 255)
 
 
 def unstretch(v, A):

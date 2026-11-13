@@ -1,0 +1,10 @@
+[setup] 1215 bright real stars (r < 16.5); image flux = 378.3 x catalog flux
+[saturation] chroma of saturated cores (0 = white): real 0.119, sim per-channel clip 0.192, sim color-preserving 0.227
+[spikes] vane width    0 mm: simulated m=4 amplitude 0.0047
+[spikes] vane width    5 mm: simulated m=4 amplitude 0.0270
+[spikes] vane width   10 mm: simulated m=4 amplitude 0.0447
+[spikes] vane width   15 mm: simulated m=4 amplitude 0.0374
+[spikes] vane width   20 mm: simulated m=4 amplitude 0.0298
+[spikes] vane width   30 mm: simulated m=4 amplitude 0.0354
+[spikes] real bright stars: m=4 amplitude 0.0295  (pure-noise floor: see vane 0)
+[spikes] vane width matching the real stars: 20.0 mm (step 2b assumed 20 mm)
