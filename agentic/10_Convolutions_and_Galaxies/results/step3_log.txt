@@ -1,17 +1,19 @@
-[data] sky 2568/641, real stars 2400/600, galaxies 4001/999 (train/test)
-[brightness] sim-star train: ln F median galaxies 8.57, stars 8.52; KS p = 0.84
-[brightness] real-star train: ln F median galaxies 8.55, stars 8.44; KS p = 0.08
-[brightness] test: ln F median galaxies 8.63, stars 8.53; KS p = 0.50
-[leak] galaxy-frame corners vs SDSS sky corners: 97.9% (chance 50 +/- 1.0)
-[leak] control, SDSS sky vs SDSS sky: 48.3% (chance 50 +/- 1.4)
+[data] DR16 galaxy cutouts: 4949 of 5000
+[data] sky 2568/641, real stars 2400/600, galaxies 3961/988 (train/test)
+[brightness] sim-star train: ln F median galaxies 8.10, stars 8.06; KS p = 0.81
+[brightness] real-star train: ln F median galaxies 8.08, stars 8.02; KS p = 0.60
+[brightness] test: ln F median galaxies 8.05, stars 8.04; KS p = 0.97
+[leak] same galaxies, DR7-era JPG corners vs DR16 corners: 98.0% (chance 50 +/- 1.0)
+[leak] DR16 galaxy-frame corners vs SDSS sky corners: 65.7% (chance 50 +/- 1.0)
+[leak] control, SDSS sky vs SDSS sky: 49.9% (chance 50 +/- 1.4)
 [accuracy]                                    galaxies   sim stars   real stars
-[accuracy] CNN trained on sim stars              99.8%      99.5%      97.5%
-[accuracy] CNN trained on real stars            100.0%      85.5%      98.2%
-[accuracy] size cut (r_rms < 5.02 px)            99.3%      95.0%      86.2%
-[by flux] CNN trained on sim stars vs galaxies+real stars:  96.8  98.7  99.1  99.6 100.0  98.7  99.6
-[by flux] CNN trained on sim stars vs galaxies+sim stars:  98.7  99.1 100.0 100.0 100.0 100.0 100.0
-[by flux] CNN trained on real stars vs galaxies+real stars:  98.2  99.6  99.6  99.1  99.6  99.1 100.0
-[by flux] CNN trained on real stars vs galaxies+sim stars:  94.5  95.4  93.8  95.2  95.3  93.9  93.9
-[by flux] size cut (r_rms < 5.02 px) vs galaxies+real stars:  95.0  94.3  94.3  94.8  93.1  95.1  94.1
-[by flux] size cut (r_rms < 5.02 px) vs galaxies+sim stars:  95.8  95.4  98.2  99.1  97.8  98.3  98.7
-[colors] sim stars with galaxy colors: 99.2% on galaxies+sim stars (blackbody colors: 99.7%)
+[accuracy] CNN trained on sim stars              99.7%      97.2%      73.5%
+[accuracy] CNN trained on real stars             99.2%      83.2%      95.3%
+[accuracy] size cut (r_rms < 4.60 px)            95.0%      85.2%      78.7%
+[by flux] CNN trained on sim stars vs galaxies+real stars:  96.9  90.5  93.7  92.3  89.9  83.3  81.6
+[by flux] CNN trained on sim stars vs galaxies+sim stars:  98.3  99.1  98.6 100.0  98.7  99.5  97.0
+[by flux] CNN trained on real stars vs galaxies+real stars:  98.2  96.4  98.3  96.4  98.7  97.4  98.6
+[by flux] CNN trained on real stars vs galaxies+sim stars:  94.4  97.7  95.0  96.1  94.8  91.8  82.4
+[by flux] size cut (r_rms < 4.60 px) vs galaxies+real stars:  91.2  87.4  90.4  89.6  89.5  87.6  86.2
+[by flux] size cut (r_rms < 4.60 px) vs galaxies+sim stars:  89.6  90.9  92.3  93.1  90.1  93.6  89.7
+[colors] sim stars with galaxy colors: 98.9% on galaxies+sim stars (blackbody colors: 98.7%)

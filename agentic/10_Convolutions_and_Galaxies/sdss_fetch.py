@@ -112,8 +112,25 @@ def sky_rows(n, seed=0):
     return rows
 
 
+def galaxy_rows():
+    """Every Galaxy Zoo galaxy, at its DR16 position: the same objects as the notebook's
+    (DR7-era) JPGs, re-made by today's pipeline like the stars and sky. Named by DR7 id."""
+    images, labels, ids = data.load()
+    rows = []
+    for k in range(0, len(ids), 50):
+        chunk = ",".join(ids[k:k + 50])
+        for r in sql(f"select d.dr7objid, p.ra, p.dec from PhotoObjDR7 d join PhotoObj p "
+                     f"on d.dr8objid = p.objid where d.dr7objid in ({chunk})"):
+            rows.append({"name": f"gal_{r['dr7objid']}", "ra": r["ra"], "dec": r["dec"],
+                         "dr7objid": r["dr7objid"]})
+    print(f"galaxies: {len(rows)} of {len(ids)} have a DR16 match", flush=True)
+    return rows
+
+
 if __name__ == "__main__":
     what = sys.argv[1:] or ["stars", "sky"]
+    if "galaxies" in what:
+        fetch_all(galaxy_rows(), OUT / "galaxies")
     if "stars" in what:
         fetch_all(star_rows(), OUT / "stars")
     if "sky" in what:

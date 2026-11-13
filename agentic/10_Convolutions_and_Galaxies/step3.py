@@ -48,6 +48,18 @@ def load_dir(kind, names=None):
     return rows, np.stack([np.asarray(Image.open(SD / kind / f"{r['name']}.jpg")) for r in rows])
 
 
+def load_dr16_galaxies():
+    """DR16 re-cutouts of the Galaxy Zoo galaxies, aligned with `ids`; `have` marks the
+    ones the crosswalk and the server could supply. Labels are Galaxy Zoo's, unchanged."""
+    rows = list(csv.DictReader(open(SD / "galaxies" / "index.csv")))
+    by_id = {r["dr7objid"]: r["name"] for r in rows}
+    have = np.array([i in by_id for i in ids])
+    out = np.zeros_like(images)
+    for k in np.flatnonzero(have):
+        out[k] = np.asarray(Image.open(SD / "galaxies" / f"{by_id[ids[k]]}.jpg"))
+    return out, have
+
+
 def linear(v):
     return sims.unstretch(v, A)
 
@@ -165,6 +177,11 @@ if __name__ == "__main__":
     train_c, test_c = data.split(labels)
     unc = rng.permutation(np.flatnonzero(labels == 2))
     gal_tr, gal_te = np.r_[train_c, unc[len(unc) // 5:]], np.r_[test_c, unc[:len(unc) // 5]]
+    # every image from the same (DR16) pipeline: swap in the DR16 galaxy cutouts
+    images_dr7 = images
+    images, have = load_dr16_galaxies()
+    gal_tr, gal_te = gal_tr[have[gal_tr]], gal_te[have[gal_te]]
+    say(f"[data] DR16 galaxy cutouts: {have.sum()} of {len(have)}")
     say(f"[data] sky {len(sky_tr)}/{len(sky_te)}, real stars {len(rs_tr)}/{len(rs_te)}, "
         f"galaxies {len(gal_tr)}/{len(gal_te)} (train/test)")
 
@@ -208,8 +225,11 @@ if __name__ == "__main__":
     gal_frames = images[gal_tr[:1500]]
     leak_gs, n_gs = leak(corners(gal_frames), corners(sky_tr[:1500]))
     leak_ss, n_ss = leak(corners(sky_tr[:750]), corners(sky_tr[750:1500]))
+    leak_77, n_77 = leak(corners(images_dr7[gal_tr[:1500]]), corners(images[gal_tr[:1500]]))
     err_gs, err_ss = np.sqrt(0.25 / n_gs), np.sqrt(0.25 / n_ss)
-    say(f"[leak] galaxy-frame corners vs SDSS sky corners: {100 * leak_gs:.1f}% (chance 50 +/- {100 * err_gs:.1f})")
+    say(f"[leak] same galaxies, DR7-era JPG corners vs DR16 corners: {100 * leak_77:.1f}% "
+        f"(chance 50 +/- {100 * np.sqrt(0.25 / n_77):.1f})")
+    say(f"[leak] DR16 galaxy-frame corners vs SDSS sky corners: {100 * leak_gs:.1f}% (chance 50 +/- {100 * err_gs:.1f})")
     say(f"[leak] control, SDSS sky vs SDSS sky: {100 * leak_ss:.1f}% (chance 50 +/- {100 * err_ss:.1f})")
 
     # ---- the two classifiers ------------------------------------------------------------------
